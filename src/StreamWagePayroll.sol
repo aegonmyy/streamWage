@@ -48,6 +48,22 @@ contract StreamWagePayroll {
         address newAddress;
     }
 
+    /// @notice Pending payroll term change proposed by an operator awaiting worker acceptance.
+    struct PendingTerms {
+        /// @notice Whether a proposal is currently active.
+        bool exists;
+        /// @notice Proposed new timeline type.
+        Timeline timeline;
+        /// @notice Proposed new payment amount in wei per interval.
+        uint256 amountPerIntervalWei;
+        /// @notice Proposed new interval duration in seconds.
+        uint256 intervalSeconds;
+        /// @notice If true, rejection triggers full settlement and termination instead of revert to old terms.
+        bool terminateOnReject;
+        /// @notice Timestamp after which either party may call expireProposal.
+        uint256 expiryTimestamp;
+    }
+
     /// @notice Protocol owner with full privileges.
     address public owner;
     /// @notice Operator addresses allowed to manage payroll workers.
@@ -56,6 +72,10 @@ contract StreamWagePayroll {
     mapping(address => Worker) public workers;
     /// @notice Pending migrations keyed by current worker address.
     mapping(address => PendingMigration) public pendingMigrations;
+    /// @notice Pending term proposals keyed by worker address.
+    mapping(address => PendingTerms) public pendingTerms;
+    /// @notice Proposal review window in seconds. Operator-settable. Defaults to 7 days.
+    uint256 public defaultProposalWindow = 7 days;
     /// @notice Ordered list of all registered worker addresses for iteration.
     /// @dev Required because mappings are not iterable. Used by treasury runway calculations.
     address[] public workerList;
@@ -89,6 +109,14 @@ contract StreamWagePayroll {
     error MigrationAlreadyPending();
     /// @notice Reverts when a withdrawal would breach the one-hour minimum payroll reserve.
     error WithdrawalExceedsSafeLimit();
+    /// @notice Reverts when no pending term proposal exists for a worker.
+    error NoPendingProposal();
+    /// @notice Reverts when a term proposal already exists for this worker.
+    error ProposalAlreadyPending();
+    /// @notice Reverts when proposal has not yet expired.
+    error ProposalNotExpired();
+    /// @notice Reverts when proposal has already expired.
+    error ProposalExpiredError();
 
     /// @notice Emitted when protocol ownership changes.
     /// @param previousOwner Previous owner address.
@@ -115,21 +143,19 @@ contract StreamWagePayroll {
         uint256 intervalSeconds,
         string metadata
     );
-    /// @notice Emitted when worker configuration is updated.
+    /// @notice Emitted when a worker's pay rate is updated.
+    /// @param worker Worker address.
+    /// @param amountPerIntervalWei New amount per interval in wei.
+    event WorkerRateUpdated(address indexed worker, uint256 amountPerIntervalWei);
+    /// @notice Emitted when a worker's interval and timeline are updated.
     /// @param worker Worker address.
     /// @param timeline New timeline configuration.
-    /// @param amountPerIntervalWei New amount per interval in wei.
     /// @param intervalSeconds New interval duration in seconds.
-    /// @param active New worker active status.
-    /// @param metadata New worker metadata.
-    event WorkerUpdated(
-        address indexed worker,
-        Timeline timeline,
-        uint256 amountPerIntervalWei,
-        uint256 intervalSeconds,
-        bool active,
-        string metadata
-    );
+    event WorkerIntervalUpdated(address indexed worker, Timeline timeline, uint256 intervalSeconds);
+    /// @notice Emitted when a worker's metadata is updated.
+    /// @param worker Worker address.
+    /// @param metadata New metadata string.
+    event WorkerMetadataUpdated(address indexed worker, string metadata);
     /// @notice Emitted when worker active status changes.
     /// @param worker Worker address.
     /// @param active New active status.
@@ -168,6 +194,40 @@ contract StreamWagePayroll {
     /// @param amountWei Amount withdrawn in wei.
     /// @param remainingBalance Treasury balance remaining after withdrawal.
     event ExcessWithdrawn(address indexed recipient, uint256 amountWei, uint256 remainingBalance);
+    /// @notice Emitted when the operator proposal review window is updated.
+    /// @param newWindowSeconds New window duration in seconds.
+    event ProposalWindowUpdated(uint256 newWindowSeconds);
+    /// @notice Emitted when an operator proposes new terms for a worker.
+    /// @param worker Worker address receiving the proposal.
+    /// @param timeline Proposed timeline.
+    /// @param amountPerIntervalWei Proposed rate.
+    /// @param intervalSeconds Proposed interval.
+    /// @param terminateOnReject Whether rejection triggers termination.
+    /// @param expiryTimestamp Deadline for worker response.
+    event TermsProposed(
+        address indexed worker,
+        Timeline timeline,
+        uint256 amountPerIntervalWei,
+        uint256 intervalSeconds,
+        bool terminateOnReject,
+        uint256 expiryTimestamp
+    );
+    /// @notice Emitted when a worker accepts proposed terms.
+    /// @param worker Worker address.
+    event TermsAccepted(address indexed worker);
+    /// @notice Emitted when a worker rejects proposed terms and resumes under old terms.
+    /// @param worker Worker address.
+    event TermsRejected(address indexed worker);
+    /// @notice Emitted when a worker is terminated following rejection or expiry with terminateOnReject=true.
+    /// @param worker Worker address.
+    event WorkerTerminated(address indexed worker);
+    /// @notice Emitted when an operator cancels an outstanding proposal.
+    /// @param worker Worker address.
+    event ProposalCancelled(address indexed worker);
+    /// @notice Emitted when a proposal is expired by either party after the review window closes.
+    /// @param worker Worker address.
+    /// @param terminated Whether the worker was terminated as a result.
+    event ProposalExpired(address indexed worker, bool terminated);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -253,55 +313,83 @@ contract StreamWagePayroll {
         emit WorkerAdded(workerAddr, timeline, amountPerIntervalWei, intervalSeconds, metadata);
     }
 
-    /// @notice Updates worker payroll configuration while preserving accrued earnings.
+    /// @notice Updates only the worker's pay rate per interval.
+    /// @dev Settles whole intervals via _accrue() first. lastAccruedAt is intentionally
+    ///      not touched — the interval is unchanged so _accrue() already preserved the
+    ///      remainder correctly and the new rate takes effect from the next interval boundary.
     /// @param workerAddr Worker wallet address.
-    /// @param timeline Updated timeline type.
-    /// @param amountPerIntervalWei Updated amount per interval in wei.
-    /// @param customIntervalSeconds Updated custom interval when timeline is Custom.
-    /// @param active Updated active status.
-    /// @param metadata Updated worker metadata.
-    function updateWorker(
+    /// @param amountPerIntervalWei New payment amount in wei per interval.
+    function updateWorkerRate(address workerAddr, uint256 amountPerIntervalWei) external onlyOperator {
+        Worker storage worker = workers[workerAddr];
+        if (!worker.exists) revert InvalidWorker();
+        if (worker.timeline != Timeline.Trigger && amountPerIntervalWei == 0) revert InvalidAmount();
+
+        _accrue(worker);
+        worker.amountPerIntervalWei = amountPerIntervalWei;
+
+        emit WorkerRateUpdated(workerAddr, amountPerIntervalWei);
+    }
+
+    /// @notice Updates the worker's timeline type and interval duration.
+    /// @dev This is the sensitive update path. Steps:
+    ///      1. _accrue() settles all complete intervals under the old terms.
+    ///      2. Fractional settlement pays out the partial interval pro-rata under the old rate.
+    ///      3. lastAccruedAt is reset to now — safe because every earned second is settled.
+    ///      4. New timeline and intervalSeconds are applied clean from this point forward.
+    ///      Fractional settlement is skipped if worker is inactive, on Trigger timeline,
+    ///      or if the interval is not actually changing.
+    /// @param workerAddr Worker wallet address.
+    /// @param timeline New timeline type.
+    /// @param customIntervalSeconds Custom interval duration — only used when timeline is Custom.
+    function updateWorkerInterval(
         address workerAddr,
         Timeline timeline,
-        uint256 amountPerIntervalWei,
-        uint256 customIntervalSeconds,
-        bool active,
-        string calldata metadata
+        uint256 customIntervalSeconds
     ) external onlyOperator {
         Worker storage worker = workers[workerAddr];
         if (!worker.exists) revert InvalidWorker();
 
-        // Settle whole intervals earned so far under the current terms.
+        uint256 newIntervalSeconds = _resolveInterval(timeline, customIntervalSeconds);
+
+        // Settle complete intervals under the old terms first.
         _accrue(worker);
 
-        uint256 intervalSeconds = _resolveInterval(timeline, customIntervalSeconds);
-        if (timeline != Timeline.Trigger && amountPerIntervalWei == 0) revert InvalidAmount();
-
-        // If the interval duration is changing we must settle the partial interval that has
-        // accumulated since the last checkpoint â€” otherwise that remainder becomes permanently
-        // misaligned under the new interval and the worker loses pro-rata earned wages.
-        // We only do this when intervalSeconds is actually changing; if it stays the same
-        // _accrue() already preserved the remainder correctly and no reset is needed.
-        if (intervalSeconds != worker.intervalSeconds && worker.intervalSeconds > 0 && worker.active && worker.timeline != Timeline.Trigger) {
+        // Fractional settlement — only needed when the interval is actually changing
+        // and the worker was actively accruing under a time-based timeline.
+        if (
+            newIntervalSeconds != worker.intervalSeconds &&
+            worker.intervalSeconds > 0 &&
+            worker.active &&
+            worker.timeline != Timeline.Trigger
+        ) {
             uint256 elapsed = block.timestamp - uint256(worker.lastAccruedAt);
             uint256 remainder = elapsed % worker.intervalSeconds;
             if (remainder > 0) {
-                // Pro-rata payment for the partial interval under the old rate.
+                // Pro-rata pay for partial interval under the old rate before terms change.
                 worker.accruedWei += (remainder * worker.amountPerIntervalWei) / worker.intervalSeconds;
             }
-            // Safe to reset now â€” every second of earned time has been settled.
+            // Every earned second is now settled — safe to reset the checkpoint.
             worker.lastAccruedAt = uint64(block.timestamp);
         }
-        // If interval is unchanged, do NOT touch lastAccruedAt â€” _accrue() already
-        // advanced it to the correct boundary and the remainder is preserved as-is.
+        // If interval is unchanged, do NOT touch lastAccruedAt — remainder is preserved as-is.
 
         worker.timeline = timeline;
-        worker.amountPerIntervalWei = amountPerIntervalWei;
-        worker.intervalSeconds = intervalSeconds;
-        worker.active = active;
+        worker.intervalSeconds = newIntervalSeconds;
+
+        emit WorkerIntervalUpdated(workerAddr, timeline, newIntervalSeconds);
+    }
+
+    /// @notice Updates only the worker's offchain metadata.
+    /// @dev Pure metadata change — no accrual state is touched.
+    /// @param workerAddr Worker wallet address.
+    /// @param metadata New metadata string.
+    function updateWorkerMetadata(address workerAddr, string calldata metadata) external onlyOperator {
+        Worker storage worker = workers[workerAddr];
+        if (!worker.exists) revert InvalidWorker();
+
         worker.metadata = metadata;
 
-        emit WorkerUpdated(workerAddr, timeline, amountPerIntervalWei, intervalSeconds, active, metadata);
+        emit WorkerMetadataUpdated(workerAddr, metadata);
     }
 
     /// @notice Activates or deactivates worker accrual.
@@ -313,7 +401,7 @@ contract StreamWagePayroll {
 
         // _accrue() already advances lastAccruedAt to the last whole interval boundary,
         // preserving the remainder. Resetting to block.timestamp here would silently
-        // discard that remainder â€” so we leave lastAccruedAt untouched.
+        // discard that remainder — so we leave lastAccruedAt untouched.
         _accrue(worker);
         worker.active = active;
 
@@ -382,7 +470,7 @@ contract StreamWagePayroll {
     }
 
     /// @notice Returns the aggregate drain rate and estimated treasury runway across all active workers.
-    /// @dev Pure view â€” safe to call permissionlessly by any worker or frontend at zero gas cost.
+    /// @dev Pure view — safe to call permissionlessly by any worker or frontend at zero gas cost.
     ///      Skips inactive workers and Trigger-timeline workers since they do not continuously drain.
     /// @return totalRatePerSecond Sum of all active workers' wei drain per second.
     /// @return estimatedRunwaySeconds How many seconds the current treasury balance can sustain payroll.
@@ -398,7 +486,7 @@ contract StreamWagePayroll {
             if (worker.timeline == Timeline.Trigger) continue;
             if (worker.intervalSeconds == 0) continue;
 
-            // Rate per second for this worker â€” integer division, intentional truncation.
+            // Rate per second for this worker — integer division, intentional truncation.
             totalRatePerSecond += worker.amountPerIntervalWei / worker.intervalSeconds;
         }
 
@@ -454,9 +542,9 @@ contract StreamWagePayroll {
         uint256 len = workerList.length;
         uint256 totalRatePerSecond;
 
-        // Step 1 & 2 â€” single loop: accrue every eligible worker and accumulate drain rate.
+        // Step 1 & 2 — single loop: accrue every eligible worker and accumulate drain rate.
         // Accrual must happen first so accruedWei is fully checkpointed before the balance
-        // check â€” otherwise the treasury looks artificially fuller than it truly is.
+        // check — otherwise the treasury looks artificially fuller than it truly is.
         for (uint256 i = 0; i < len; i++) {
             Worker storage w = workers[workerList[i]];
 
@@ -468,19 +556,19 @@ contract StreamWagePayroll {
             totalRatePerSecond += w.amountPerIntervalWei / w.intervalSeconds;
         }
 
-        // Step 3 â€” minimum reserve: one full hour of payroll for every active worker.
+        // Step 3 — minimum reserve: one full hour of payroll for every active worker.
         uint256 minimumReserve = totalRatePerSecond * 1 hours;
 
-        // Step 4 â€” withdrawable amount after reserving the minimum.
+        // Step 4 — withdrawable amount after reserving the minimum.
         // Guard against underflow first: if balance is already below the reserve
         // the treasury is underwater and no withdrawal is safe regardless of amount.
         if (address(this).balance < minimumReserve) revert WithdrawalExceedsSafeLimit();
         uint256 withdrawable = address(this).balance - minimumReserve;
 
-        // Step 5 â€” solvency check.
+        // Step 5 — solvency check.
         if (amountWei > withdrawable) revert WithdrawalExceedsSafeLimit();
 
-        // Step 6 â€” transfer and emit.
+        // Step 6 — transfer and emit.
         (bool ok,) = recipient.call{value: amountWei}("");
         if (!ok) revert TransferFailed();
 
@@ -488,10 +576,218 @@ contract StreamWagePayroll {
     }
 
     // ---------------------------------------------------------------------------
+    // Term Negotiation
+    // ---------------------------------------------------------------------------
+
+    /// @notice Sets the review window duration for future term proposals.
+    /// @dev Operator-settable at runtime. Only affects proposals made after this call.
+    /// @param durationSeconds New window duration in seconds.
+    function setProposalWindow(uint256 durationSeconds) external onlyOperator {
+        if (durationSeconds == 0) revert InvalidConfiguration();
+        defaultProposalWindow = durationSeconds;
+        emit ProposalWindowUpdated(durationSeconds);
+    }
+
+    /// @notice Operator proposes new payroll terms for a worker.
+    /// @dev Settles current earnings via _accrue(), pauses the worker, and stores the
+    ///      proposal with an expiry deadline. Worker must accept or reject before expiry.
+    ///      Rate and interval are the core employment terms — workers must consent to changes.
+    /// @param workerAddr Worker wallet address.
+    /// @param timeline Proposed new timeline type.
+    /// @param amountPerIntervalWei Proposed new payment amount in wei per interval.
+    /// @param customIntervalSeconds Custom interval — only used when timeline is Custom.
+    /// @param terminateOnReject If true, rejection or expiry triggers full settlement and termination.
+    function proposeTerms(
+        address workerAddr,
+        Timeline timeline,
+        uint256 amountPerIntervalWei,
+        uint256 customIntervalSeconds,
+        bool terminateOnReject
+    ) external onlyOperator {
+        Worker storage worker = workers[workerAddr];
+        if (!worker.exists) revert InvalidWorker();
+        if (pendingTerms[workerAddr].exists) revert ProposalAlreadyPending();
+
+        uint256 newIntervalSeconds = _resolveInterval(timeline, customIntervalSeconds);
+        if (timeline != Timeline.Trigger && amountPerIntervalWei == 0) revert InvalidAmount();
+
+        // Settle all whole intervals earned under current terms before pausing.
+        // This is the last checkpoint under old terms — everything after this
+        // is in limbo until the worker accepts or rejects.
+        _accrue(worker);
+
+        // Pause the worker — no further accrual while proposal is outstanding.
+        worker.active = false;
+
+        pendingTerms[workerAddr] = PendingTerms({
+            exists: true,
+            timeline: timeline,
+            amountPerIntervalWei: amountPerIntervalWei,
+            intervalSeconds: newIntervalSeconds,
+            terminateOnReject: terminateOnReject,
+            expiryTimestamp: block.timestamp + defaultProposalWindow
+        });
+
+        emit TermsProposed(
+            workerAddr,
+            timeline,
+            amountPerIntervalWei,
+            newIntervalSeconds,
+            terminateOnReject,
+            block.timestamp + defaultProposalWindow
+        );
+    }
+
+    /// @notice Worker accepts the proposed terms.
+    /// @dev Fractional settlement is applied for any partial interval remainder under
+    ///      the old interval before new terms take effect. lastAccruedAt is reset to now
+    ///      because every earned second has been explicitly settled before this point.
+    function acceptTerms() external {
+        Worker storage worker = workers[msg.sender];
+        if (!worker.exists) revert InvalidWorker();
+
+        PendingTerms storage proposal = pendingTerms[msg.sender];
+        if (!proposal.exists) revert NoPendingProposal();
+
+        // Worker cannot accept an expired proposal — they must call expireProposal instead.
+        if (block.timestamp > proposal.expiryTimestamp) revert ProposalExpiredError();
+
+        // Fractional settlement — pay out partial interval remainder under the old rate
+        // before the new interval takes effect, mirroring the updateWorkerInterval logic.
+        if (
+            proposal.intervalSeconds != worker.intervalSeconds &&
+            worker.intervalSeconds > 0 &&
+            worker.timeline != Timeline.Trigger
+        ) {
+            uint256 elapsed = block.timestamp - uint256(worker.lastAccruedAt);
+            uint256 remainder = elapsed % worker.intervalSeconds;
+            if (remainder > 0) {
+                worker.accruedWei += (remainder * worker.amountPerIntervalWei) / worker.intervalSeconds;
+            }
+        }
+
+        // Apply new terms.
+        worker.timeline = proposal.timeline;
+        worker.amountPerIntervalWei = proposal.amountPerIntervalWei;
+        worker.intervalSeconds = proposal.intervalSeconds;
+        worker.active = true;
+        // Safe to reset — every earned second under old terms is now settled.
+        worker.lastAccruedAt = uint64(block.timestamp);
+
+        delete pendingTerms[msg.sender];
+
+        emit TermsAccepted(msg.sender);
+    }
+
+    /// @notice Worker rejects the proposed terms.
+    /// @dev If terminateOnReject=true: fractional settlement is applied, worker is permanently
+    ///      deactivated, accrued balance remains claimable. If terminateOnReject=false: old
+    ///      terms are restored and worker resumes. In both cases lastAccruedAt is reset to now
+    ///      because _accrue() was called at proposeTerms time — no remainder has accumulated
+    ///      since the worker was paused throughout the proposal period.
+    function rejectTerms() external {
+        Worker storage worker = workers[msg.sender];
+        if (!worker.exists) revert InvalidWorker();
+
+        PendingTerms storage proposal = pendingTerms[msg.sender];
+        if (!proposal.exists) revert NoPendingProposal();
+
+        // Worker cannot reject an expired proposal — they must call expireProposal instead.
+        if (block.timestamp > proposal.expiryTimestamp) revert ProposalExpiredError();
+
+        _applyRejection(msg.sender, worker, proposal.terminateOnReject, false);
+    }
+
+    /// @notice Operator cancels an outstanding proposal and restores the worker.
+    /// @dev Restores worker.active and resets lastAccruedAt. Safe because worker was paused
+    ///      since proposeTerms — no unaccrued remainder has accumulated during this period.
+    /// @param workerAddr Worker wallet address.
+    function cancelProposal(address workerAddr) external onlyOperator {
+        Worker storage worker = workers[workerAddr];
+        if (!worker.exists) revert InvalidWorker();
+
+        PendingTerms storage proposal = pendingTerms[workerAddr];
+        if (!proposal.exists) revert NoPendingProposal();
+
+        delete pendingTerms[workerAddr];
+
+        worker.active = true;
+        worker.lastAccruedAt = uint64(block.timestamp);
+
+        emit ProposalCancelled(workerAddr);
+    }
+
+    /// @notice Expires a stale proposal after the review window has closed.
+    /// @dev Callable by anyone — either party can trigger expiry. Executes the same
+    ///      rejection branching logic as rejectTerms, respecting terminateOnReject.
+    ///      This prevents either party from being held in limbo indefinitely.
+    /// @param workerAddr Worker wallet address whose proposal has expired.
+    function expireProposal(address workerAddr) external {
+        Worker storage worker = workers[workerAddr];
+        if (!worker.exists) revert InvalidWorker();
+
+        PendingTerms storage proposal = pendingTerms[workerAddr];
+        if (!proposal.exists) revert NoPendingProposal();
+
+        // Cannot expire before the window closes.
+        if (block.timestamp <= proposal.expiryTimestamp) revert ProposalNotExpired();
+
+        bool terminated = proposal.terminateOnReject;
+        _applyRejection(workerAddr, worker, terminated, true);
+    }
+
+    /// @dev Shared rejection logic used by rejectTerms and expireProposal.
+    ///      If terminateOnReject: fractional settlement, permanent deactivation, balance remains claimable.
+    ///      If not: restore old terms, worker resumes from now.
+    ///      emitExpiry controls whether ProposalExpired or TermsRejected/WorkerTerminated is emitted.
+    function _applyRejection(
+        address workerAddr,
+        Worker storage worker,
+        bool terminateOnReject,
+        bool emitExpiry
+    ) internal {
+        if (terminateOnReject) {
+            // Fractional settlement for any remainder that built up before the worker was paused.
+            // Worker was paused at proposeTerms so elapsed here reflects time before the pause,
+            // already captured by _accrue() at that point — remainder from that moment is settled now.
+            if (worker.intervalSeconds > 0 && worker.timeline != Timeline.Trigger) {
+                uint256 elapsed = block.timestamp - uint256(worker.lastAccruedAt);
+                uint256 remainder = elapsed % worker.intervalSeconds;
+                if (remainder > 0) {
+                    worker.accruedWei += (remainder * worker.amountPerIntervalWei) / worker.intervalSeconds;
+                }
+            }
+
+            // Permanently deactivate. accruedWei intentionally left intact — worker can still claim.
+            worker.active = false;
+            worker.lastAccruedAt = uint64(block.timestamp);
+            delete pendingTerms[workerAddr];
+
+            if (emitExpiry) {
+                emit ProposalExpired(workerAddr, true);
+            } else {
+                emit WorkerTerminated(workerAddr);
+            }
+        } else {
+            // Restore worker under original terms — no fractional settlement needed because
+            // worker was paused since proposeTerms so no new time has elapsed to settle.
+            worker.active = true;
+            worker.lastAccruedAt = uint64(block.timestamp);
+            delete pendingTerms[workerAddr];
+
+            if (emitExpiry) {
+                emit ProposalExpired(workerAddr, false);
+            } else {
+                emit TermsRejected(workerAddr);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // Worker Address Migration
     // ---------------------------------------------------------------------------
 
-    /// @notice Step 1 â€” Current worker proposes migration to a new address.
+    /// @notice Step 1 — Current worker proposes migration to a new address.
     /// @dev Only the registered worker (msg.sender) can initiate. Stores the
     ///      proposed new address as a pending migration. The new address must
     ///      separately call acceptMigration() to prove control and complete transfer.
@@ -529,7 +825,7 @@ contract StreamWagePayroll {
         emit MigrationCancelled(msg.sender, proposedNew);
     }
 
-    /// @notice Step 2 â€” Proposed new address accepts the migration.
+    /// @notice Step 2 — Proposed new address accepts the migration.
     /// @dev msg.sender must be the exact newAddress stored in the pending migration
     ///      for oldAddress. On acceptance: accrues earnings, copies full Worker state
     ///      to the new address, deletes the old entry, and clears the pending migration.
@@ -657,3 +953,4 @@ contract StreamWagePayroll {
         if (timeline == Timeline.Trigger) return 0;
         revert InvalidConfiguration();
     }
+}
