@@ -15,28 +15,30 @@ https://book.getfoundry.sh/
 
 ## Usage
 
+Solidity and Foundry live under `contract/`. Run Forge from that directory (or pass `--root contract`).
+
 ### Build
 
 ```shell
-$ forge build
+$ cd contract && forge build
 ```
 
 ### Test
 
 ```shell
-$ forge test
+$ cd contract && forge test
 ```
 
 ### Format
 
 ```shell
-$ forge fmt
+$ cd contract && forge fmt
 ```
 
 ### Gas Snapshots
 
 ```shell
-$ forge snapshot
+$ cd contract && forge snapshot
 ```
 
 ### Anvil
@@ -48,7 +50,7 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script <your_script_path>:<your_script_contract> --rpc-url <your_rpc_url> --private-key <your_private_key>
+$ cd contract && forge script <your_script_path>:<your_script_contract> --rpc-url <your_rpc_url> --private-key <your_private_key>
 ```
 
 ### Cast

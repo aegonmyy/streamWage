@@ -1,6 +1,6 @@
-# Compiler files
-cache/
-out/
+# Foundry (project root is contract/)
+contract/cache/
+contract/out/
 
 # Ignores development broadcast logs
 !/broadcast

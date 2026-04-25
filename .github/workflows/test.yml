@@ -26,13 +26,17 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Show Forge version
+        working-directory: contract
         run: forge --version
 
       - name: Run Forge fmt
+        working-directory: contract
         run: forge fmt --check
 
       - name: Run Forge build
+        working-directory: contract
         run: forge build --sizes
 
       - name: Run Forge tests
+        working-directory: contract
         run: forge test -vvv
