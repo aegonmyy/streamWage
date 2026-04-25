@@ -1,6 +1,10 @@
-# Foundry (project root is contract/)
-contract/cache/
-contract/out/
+# Foundry (project root is contracts/)
+contracts/cache/
+contracts/out/
+
+# Foundry artifacts when run at repo root
+cache/
+out/
 
 # Ignores development broadcast logs
 !/broadcast
@@ -12,3 +16,7 @@ docs/
 
 # Dotenv file
 .env
+
+# Editor / agent metadata
+.cursor/
+.codex
