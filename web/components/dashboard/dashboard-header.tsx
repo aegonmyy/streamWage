@@ -1,8 +1,7 @@
 "use client"
 
-import Link from "next/link"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { Zap, Wallet } from "lucide-react"
+import { Shield, Zap, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { cn } from "@/lib/utils"
@@ -12,14 +11,11 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ view }: DashboardHeaderProps) {
-  const { isAdmin, isConnected } = usePayrollRole()
-  const canUseAdmin = !isConnected || isAdmin
+  const { isAdmin, isConnected, isLoading } = usePayrollRole()
 
-  const tabClass = (active: boolean) =>
-    cn(
-      "inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-medium transition-all sm:px-4",
-      active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-    )
+  const roleLabel = !isConnected ? "Not connected" : isLoading ? "Checking role…" : isAdmin ? "Admin" : "Worker"
+  const roleIcon = !isConnected ? Wallet : isAdmin ? Shield : Wallet
+  const RoleIcon = roleIcon
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-card">
@@ -32,24 +28,9 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Dashboard view">
-            <Link href="/dashboard/worker" className={tabClass(view === "worker")} role="tab" aria-selected={view === "worker"}>
-              Worker
-            </Link>
-            {canUseAdmin ? (
-              <Link href="/dashboard/admin" className={tabClass(view === "admin")} role="tab" aria-selected={view === "admin"}>
-                Admin
-              </Link>
-            ) : (
-              <span
-                className={cn(tabClass(false), "cursor-not-allowed opacity-50")}
-                role="tab"
-                aria-selected={false}
-                title="This wallet is not configured as a payroll operator"
-              >
-                Admin
-              </span>
-            )}
+          <div className="hidden items-center gap-2 rounded-xl border border-border/70 bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
+            <RoleIcon className="h-4 w-4" aria-hidden />
+            <span className={cn(isConnected && !isLoading ? "text-foreground" : undefined)}>{roleLabel}</span>
           </div>
 
           <ConnectButton.Custom>
@@ -88,6 +69,11 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
                     </Button>
                   ) : (
                     <div className="flex items-center gap-2">
+                      <div className="sm:hidden">
+                        <Button type="button" variant="outline" size="sm" className="rounded-xl" disabled>
+                          {roleLabel}
+                        </Button>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"

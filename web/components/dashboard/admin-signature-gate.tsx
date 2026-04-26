@@ -36,7 +36,7 @@ function getSessionKey(address: string, chainId?: number, contractAddress?: stri
 
 export function AdminSignatureGate({ children }: { children: React.ReactNode }) {
   const { address, chainId, contractAddress, isAdmin } = usePayrollRole()
-  const [isVerified, setIsVerified] = useState(false)
+  const [verifiedKey, setVerifiedKey] = useState<string | undefined>(undefined)
   const { signMessageAsync, isPending, error, reset } = useSignMessage()
 
   const message = useMemo(() => {
@@ -44,24 +44,30 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
     return buildAdminMessage({ address, chainId, contractAddress })
   }, [address, chainId, contractAddress])
 
-  useEffect(() => {
-    if (!address || !isAdmin) {
-      setIsVerified(false)
-      return
-    }
-
-    const key = getSessionKey(address, chainId, contractAddress)
-    setIsVerified(sessionStorage.getItem(key) === "verified")
+  const sessionKey = useMemo(() => {
+    if (!address || !isAdmin) return undefined
+    return getSessionKey(address, chainId, contractAddress)
   }, [address, chainId, contractAddress, isAdmin])
 
+  const sessionVerified = useMemo(() => {
+    if (!sessionKey) return false
+    try {
+      return sessionStorage.getItem(sessionKey) === "verified"
+    } catch {
+      return false
+    }
+  }, [sessionKey])
+
+  const isVerified = (sessionKey && verifiedKey === sessionKey) || sessionVerified
+
   const handleVerify = async () => {
-    if (!address || !message) return
+    if (!address || !message || !sessionKey) return
 
     const signature = await signMessageAsync({ message })
     if (!signature) return
 
-    sessionStorage.setItem(getSessionKey(address, chainId, contractAddress), "verified")
-    setIsVerified(true)
+    sessionStorage.setItem(sessionKey, "verified")
+    setVerifiedKey(sessionKey)
     reset()
   }
 

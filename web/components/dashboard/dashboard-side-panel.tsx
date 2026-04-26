@@ -42,14 +42,14 @@ export function DashboardSidePanel({ view }: DashboardSidePanelProps) {
 
   return (
     <>
-      <div className="fixed right-4 bottom-4 z-40 md:hidden">
+      <div className="fixed bottom-4 left-4 z-40 md:hidden">
         <Sheet>
           <SheetTrigger asChild>
             <Button type="button" size="icon" className="h-11 w-11 rounded-full shadow-lg" aria-label="Open dashboard sidebar">
               {view === "admin" ? <Shield className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[22rem] p-0 sm:max-w-[22rem]">
+          <SheetContent side="left" className="w-[22rem] p-0 sm:max-w-[22rem]">
             <SheetHeader className="border-b border-border/70 p-4 text-left">
               <SheetTitle>{content.title}</SheetTitle>
               <SheetDescription>{content.description}</SheetDescription>
@@ -79,7 +79,7 @@ export function DashboardSidePanel({ view }: DashboardSidePanelProps) {
 
       <aside
         className={cn(
-          "sticky top-16 hidden h-[calc(100vh-4rem)] border-l border-border/70 bg-card/70 backdrop-blur md:block",
+          "sticky top-16 hidden h-[calc(100vh-4rem)] border-r border-border/70 bg-card/70 backdrop-blur md:block",
           isOpen ? "w-[22rem]" : "w-14",
         )}
       >
@@ -88,12 +88,12 @@ export function DashboardSidePanel({ view }: DashboardSidePanelProps) {
             type="button"
             variant="outline"
             size="icon"
-            className="absolute top-4 -left-5 z-10 h-10 w-10 rounded-full border-border bg-background shadow-sm"
+            className="absolute top-4 -right-5 z-10 h-10 w-10 rounded-full border-border bg-background shadow-sm"
             onClick={() => setIsOpen((value) => !value)}
-            aria-label={isOpen ? "Collapse right sidebar" : "Expand right sidebar"}
+            aria-label={isOpen ? "Collapse left sidebar" : "Expand left sidebar"}
             title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
           >
-            {isOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </Button>
 
           <div className={cn("flex h-full flex-col gap-4 overflow-hidden p-4", !isOpen && "items-center px-2 py-4")}>
