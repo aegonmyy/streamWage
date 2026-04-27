@@ -68,10 +68,12 @@ export function formatDuration(seconds: bigint) {
 
   const day = 86_400n
   const hour = 3_600n
+  const minute = 60n
 
   if (seconds >= day) return `${seconds / day}d`
   if (seconds >= hour) return `${seconds / hour}h`
-  return `${seconds / 60n}m`
+  if (seconds >= minute) return `${seconds / minute}m`
+  return `${seconds}s`
 }
 
 export function formatTimeline(worker: Pick<AdminWorkerRecord, "timeline" | "intervalSeconds">) {
@@ -281,7 +283,7 @@ export function usePayrollAdminData() {
   useEffect(() => {
     if (!contract) return
     void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-  }, [contract?.address, contract?.chainId, queryClient])
+  }, [contract, queryClient])
 
   return query
 }

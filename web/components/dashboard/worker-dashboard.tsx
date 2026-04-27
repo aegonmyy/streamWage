@@ -29,6 +29,7 @@ import {
   usePayrollWorkerData,
 } from "@/hooks/use-payroll-worker-data"
 import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
 type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
@@ -100,6 +101,36 @@ export function WorkerDashboard() {
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
+  const overviewPriority = useMemo(
+    () =>
+      data
+        ? [
+            {
+              title: "Claimable Now",
+              value: `${formatEth(data.claimableWei)} ETH`,
+              hint: "Use Claim when you want funds sent to the connected wallet immediately.",
+              target: "earnings" as const,
+            },
+            {
+              title: "Pending Terms",
+              value: data.pendingProposal ? "Action required" : "No open proposal",
+              hint: data.pendingProposal
+                ? "Accrual is paused until you accept, reject, or the proposal expires."
+                : "No operator proposal is waiting on you.",
+              target: "proposals" as const,
+            },
+            {
+              title: "Wallet Identity",
+              value: data.pendingMigration ? "Migration pending" : "Current wallet live",
+              hint: data.pendingMigration
+                ? "The destination wallet must accept the migration to complete the move."
+                : "Open profile tools when you need to move your worker record.",
+              target: "profile" as const,
+            },
+          ]
+        : [],
+    [data],
+  )
 
   async function executeWrite(
     actionLabel: string,
@@ -108,7 +139,9 @@ export function WorkerDashboard() {
   ) {
     try {
       const nextHash = await callback()
-      toast.success(`${actionLabel} submitted`, { description: nextHash })
+      toast.success(`${actionLabel} submitted`, {
+        description: getTransactionToastDescription(contract?.chainId, nextHash),
+      })
       onSuccess?.()
       await refetch()
     } catch (caught) {
@@ -175,33 +208,6 @@ export function WorkerDashboard() {
   }
 
   const isProposalUrgent = !!data.pendingProposal
-  const overviewPriority = useMemo(
-    () => [
-      {
-        title: "Claimable Now",
-        value: `${formatEth(data.claimableWei)} ETH`,
-        hint: "Use Claim when you want funds sent to the connected wallet immediately.",
-        target: "earnings" as const,
-      },
-      {
-        title: "Pending Terms",
-        value: data.pendingProposal ? "Action required" : "No open proposal",
-        hint: data.pendingProposal
-          ? "Accrual is paused until you accept, reject, or the proposal expires."
-          : "No operator proposal is waiting on you.",
-        target: "proposals" as const,
-      },
-      {
-        title: "Wallet Identity",
-        value: data.pendingMigration ? "Migration pending" : "Current wallet live",
-        hint: data.pendingMigration
-          ? "The destination wallet must accept the migration to complete the move."
-          : "Open profile tools when you need to move your worker record.",
-        target: "profile" as const,
-      },
-    ],
-    [data],
-  )
 
   const renderOverview = () => (
     <div className="space-y-6">

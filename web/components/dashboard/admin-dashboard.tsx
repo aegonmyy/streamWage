@@ -49,6 +49,7 @@ import {
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
 type AdminSectionId = "overview" | "workers" | "proposals" | "treasury" | "admins"
@@ -168,7 +169,9 @@ export function AdminDashboard() {
   ) {
     try {
       const nextHash = await callback()
-      toast.success(`${actionLabel} submitted`, { description: nextHash })
+      toast.success(`${actionLabel} submitted`, {
+        description: getTransactionToastDescription(contract?.chainId, nextHash),
+      })
       onSuccess?.()
       await refetch()
     } catch (caught) {
