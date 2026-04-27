@@ -259,7 +259,7 @@ export function AdminDashboard() {
         />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>Priority Queue</CardTitle>
@@ -289,31 +289,6 @@ export function AdminDashboard() {
                 </button>
               )
             })}
-          </CardContent>
-        </Card>
-
-        <Card className={cn(isLowTreasury && "border-destructive/40")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {isLowTreasury ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <BadgeCheck className="h-5 w-5 text-primary" />}
-              Live Status
-            </CardTitle>
-            <CardDescription>
-              Worker, treasury, ownership, and proposal state are refreshed from contract events plus fresh reads.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>
-              The dashboard subscribes to payroll contract logs and invalidates the admin query set whenever a relevant event lands.
-            </p>
-            <p>
-              Event indexing starts at block <span className="font-mono">{contract.fromBlock.toString()}</span>. Set `NEXT_PUBLIC_PAYROLL_FROM_BLOCK` in production.
-            </p>
-            <p className="font-mono text-xs">
-              {isConfigured
-                ? `Role gate targets ${contractAddress} on chain ${chainId}.`
-                : "Contract not configured."}
-            </p>
           </CardContent>
         </Card>
       </div>

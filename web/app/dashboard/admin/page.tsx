@@ -11,8 +11,13 @@ export default function AdminDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && isConnected && !isAdmin) {
-      router.replace("/dashboard/worker")
+    if (isLoading) return
+    if (!isConnected) {
+      router.replace("/dashboard")
+      return
+    }
+    if (!isAdmin) {
+      router.replace("/dashboard")
     }
   }, [isAdmin, isConnected, isLoading, router])
 
@@ -24,7 +29,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (isConnected && !isAdmin) {
+  if (!isConnected || (isConnected && !isAdmin)) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-muted-foreground">
         Redirecting…

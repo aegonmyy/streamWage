@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useSignMessage } from "wagmi"
+import { getAddress, verifyMessage } from "viem"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 
 const SIGNATURE_VERSION = "v1"
+const SESSION_TTL_MS = 30 * 60 * 1000
 
 function buildAdminMessage({
   address,
@@ -34,6 +36,11 @@ function getSessionKey(address: string, chainId?: number, contractAddress?: stri
   return `streamwage:admin-signature:${address}:${chainId ?? "na"}:${contractAddress ?? "na"}:${SIGNATURE_VERSION}`
 }
 
+type VerifiedSession = {
+  signature: `0x${string}`
+  verifiedAt: number
+}
+
 export function AdminSignatureGate({ children }: { children: React.ReactNode }) {
   const { address, chainId, contractAddress, isAdmin } = usePayrollRole()
   const [verifiedKey, setVerifiedKey] = useState<string | undefined>(undefined)
@@ -49,14 +56,62 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
     return getSessionKey(address, chainId, contractAddress)
   }, [address, chainId, contractAddress, isAdmin])
 
-  const sessionVerified = useMemo(() => {
-    if (!sessionKey) return false
-    try {
-      return sessionStorage.getItem(sessionKey) === "verified"
-    } catch {
-      return false
+  const [sessionVerified, setSessionVerified] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function validateSession() {
+      if (!sessionKey || !message || !address || !isAdmin) {
+        setSessionVerified(false)
+        return
+      }
+
+      try {
+        const raw = sessionStorage.getItem(sessionKey)
+        if (!raw) {
+          setSessionVerified(false)
+          return
+        }
+
+        const parsed = JSON.parse(raw) as VerifiedSession
+        if (!parsed?.signature || !parsed?.verifiedAt) {
+          sessionStorage.removeItem(sessionKey)
+          setSessionVerified(false)
+          return
+        }
+
+        if (Date.now() - parsed.verifiedAt > SESSION_TTL_MS) {
+          sessionStorage.removeItem(sessionKey)
+          setSessionVerified(false)
+          return
+        }
+
+        const valid = await verifyMessage({
+          address: getAddress(address),
+          message,
+          signature: parsed.signature,
+        })
+
+        if (!cancelled) {
+          setSessionVerified(valid)
+        }
+      } catch {
+        try {
+          sessionStorage.removeItem(sessionKey)
+        } catch {}
+        if (!cancelled) {
+          setSessionVerified(false)
+        }
+      }
     }
-  }, [sessionKey])
+
+    void validateSession()
+
+    return () => {
+      cancelled = true
+    }
+  }, [address, isAdmin, message, sessionKey])
 
   const isVerified = (sessionKey && verifiedKey === sessionKey) || sessionVerified
 
@@ -66,8 +121,25 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
     const signature = await signMessageAsync({ message })
     if (!signature) return
 
-    sessionStorage.setItem(sessionKey, "verified")
+    const verified = await verifyMessage({
+      address: getAddress(address),
+      message,
+      signature,
+    })
+
+    if (!verified) {
+      throw new Error("Signature verification failed for the connected wallet.")
+    }
+
+    sessionStorage.setItem(
+      sessionKey,
+      JSON.stringify({
+        signature,
+        verifiedAt: Date.now(),
+      } satisfies VerifiedSession),
+    )
     setVerifiedKey(sessionKey)
+    setSessionVerified(true)
     reset()
   }
 
@@ -91,7 +163,7 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
             {isPending ? "Waiting for signature…" : "Sign Message"}
           </Button>
           <p className="text-xs text-muted-foreground">
-            This is a client-side anti-impersonation check. For real auth, verify the signature on the server and issue a session.
+            This session is locally signature-verified and expires after 30 minutes. For stronger auth, verify server-side and issue a session cookie.
           </p>
         </CardContent>
       </Card>
