@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi"
-import { getAddress, type Address } from "viem"
+import { decodeEventLog, getAddress, type Address } from "viem"
 import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract"
 import {
   formatDuration,
@@ -16,6 +16,16 @@ import {
 type PendingTermsResult = readonly [boolean, number, bigint, bigint, boolean, bigint]
 type PendingMigrationResult = readonly [boolean, Address]
 type WorkerResult = readonly [boolean, boolean, number, bigint, bigint, bigint, bigint, bigint, string]
+
+export type WorkerActivityItem = {
+  id: string
+  title: string
+  detail: string
+  timestamp: bigint | null
+  tone: "default" | "warning"
+  txHash: `0x${string}` | null
+  actionLabel: string
+}
 
 export type WorkerDashboardData = {
   address: Address
@@ -40,6 +50,8 @@ export type WorkerDashboardData = {
     exists: boolean
     newAddress: Address
   } | null
+  incomingMigrationRequests: Address[]
+  recentActivity: WorkerActivityItem[]
 }
 
 const QUERY_KEY = ["payroll-worker"]
@@ -94,6 +106,183 @@ export function usePayrollWorkerData() {
       const worker = workerResult.result as WorkerResult
       const pendingTerms = pendingTermsResult.result as PendingTermsResult
       const pendingMigration = pendingMigrationResult.result as PendingMigrationResult
+      const logs = await publicClient.getLogs({
+        address: contract.address,
+        fromBlock: contract.fromBlock,
+        toBlock: "latest",
+      })
+
+      const incomingCandidates = new Set<Address>()
+      const recentActivity: WorkerActivityItem[] = []
+
+      for (const log of logs) {
+        const decoded = decodeEventLog({
+          abi: payrollAbi,
+          data: log.data,
+          topics: log.topics,
+        })
+
+        if (decoded.eventName === "Claimed" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "Claim processed",
+            detail: `${formatEth(decoded.args.amount)} ETH sent to ${getAddress(decoded.args.recipient)}`,
+            timestamp: log.blockNumber ?? null,
+            tone: "default",
+            txHash: log.transactionHash,
+            actionLabel: "claim",
+          })
+        }
+
+        if (decoded.eventName === "TermsProposed" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "New terms proposed",
+            detail: decoded.args.terminateOnReject
+              ? "Rejecting can terminate this worker record."
+              : "You can accept or reject to resume normal flow.",
+            timestamp: log.blockNumber ?? null,
+            tone: "warning",
+            txHash: log.transactionHash,
+            actionLabel: "terms proposed",
+          })
+        }
+
+        if (decoded.eventName === "TermsAccepted" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "Terms accepted",
+            detail: "Your worker terms were updated onchain.",
+            timestamp: log.blockNumber ?? null,
+            tone: "default",
+            txHash: log.transactionHash,
+            actionLabel: "accept terms",
+          })
+        }
+
+        if (decoded.eventName === "TermsRejected" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "Terms rejected",
+            detail: "Your previous terms resumed after rejection.",
+            timestamp: log.blockNumber ?? null,
+            tone: "default",
+            txHash: log.transactionHash,
+            actionLabel: "reject terms",
+          })
+        }
+
+        if (decoded.eventName === "ProposalExpired" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "Proposal expired",
+            detail: decoded.args.terminated
+              ? "The proposal expired and terminated this worker record."
+              : "The proposal expired and old terms resumed.",
+            timestamp: log.blockNumber ?? null,
+            tone: decoded.args.terminated ? "warning" : "default",
+            txHash: log.transactionHash,
+            actionLabel: "proposal expired",
+          })
+        }
+
+        if (decoded.eventName === "MigrationProposed") {
+          const oldAddress = getAddress(decoded.args.oldAddress)
+          const newAddress = getAddress(decoded.args.newAddress)
+
+          if (oldAddress === address) {
+            recentActivity.push({
+              id: `${log.transactionHash}-${log.logIndex}`,
+              title: "Migration proposed",
+              detail: `Waiting for ${newAddress} to accept the move.`,
+              timestamp: log.blockNumber ?? null,
+              tone: "warning",
+              txHash: log.transactionHash,
+              actionLabel: "propose migration",
+            })
+          }
+
+          if (newAddress === address) {
+            incomingCandidates.add(oldAddress)
+            recentActivity.push({
+              id: `${log.transactionHash}-${log.logIndex}`,
+              title: "Incoming migration request",
+              detail: `${oldAddress} nominated this wallet as the destination.`,
+              timestamp: log.blockNumber ?? null,
+              tone: "warning",
+              txHash: log.transactionHash,
+              actionLabel: "incoming migration",
+            })
+          }
+        }
+
+        if (decoded.eventName === "MigrationCancelled") {
+          const oldAddress = getAddress(decoded.args.oldAddress)
+          const newAddress = getAddress(decoded.args.newAddress)
+
+          if (oldAddress === address || newAddress === address) {
+            recentActivity.push({
+              id: `${log.transactionHash}-${log.logIndex}`,
+              title: "Migration cancelled",
+              detail: "The pending wallet migration was cancelled.",
+              timestamp: log.blockNumber ?? null,
+              tone: "default",
+              txHash: log.transactionHash,
+              actionLabel: "cancel migration",
+            })
+          }
+        }
+
+        if (decoded.eventName === "MigrationCompleted") {
+          const oldAddress = getAddress(decoded.args.oldAddress)
+          const newAddress = getAddress(decoded.args.newAddress)
+
+          if (oldAddress === address || newAddress === address) {
+            recentActivity.push({
+              id: `${log.transactionHash}-${log.logIndex}`,
+              title: "Migration completed",
+              detail: `Worker state moved from ${oldAddress} to ${newAddress}.`,
+              timestamp: log.blockNumber ?? null,
+              tone: "default",
+              txHash: log.transactionHash,
+              actionLabel: "migration completed",
+            })
+          }
+        }
+
+        if (decoded.eventName === "LowTreasury" && getAddress(decoded.args.worker) === address) {
+          recentActivity.push({
+            id: `${log.transactionHash}-${log.logIndex}`,
+            title: "Low treasury warning",
+            detail: `Estimated runway dropped to ${formatDuration(decoded.args.estimatedRunwaySeconds)}.`,
+            timestamp: log.blockNumber ?? null,
+            tone: "warning",
+            txHash: log.transactionHash,
+            actionLabel: "low treasury",
+          })
+        }
+      }
+
+      const incomingCandidateList = Array.from(incomingCandidates)
+      const incomingPendingChecks =
+        incomingCandidateList.length > 0
+          ? await publicClient.multicall({
+              contracts: incomingCandidateList.map((oldAddress) => ({
+                ...contract,
+                functionName: "pendingMigrations",
+                args: [oldAddress],
+              })),
+            })
+          : []
+
+      const incomingMigrationRequests = incomingCandidateList.filter((oldAddress, index) => {
+        const result = incomingPendingChecks[index]
+        if (result?.status !== "success") return false
+        const pending = result.result as PendingMigrationResult
+        return pending[0] && getAddress(pending[1]) === address
+      })
+
+      recentActivity.sort((left, right) => Number((right.timestamp ?? 0n) - (left.timestamp ?? 0n)))
 
       return {
         address,
@@ -122,6 +311,8 @@ export function usePayrollWorkerData() {
               newAddress: getAddress(pendingMigration[1]),
             }
           : null,
+        incomingMigrationRequests,
+        recentActivity: recentActivity.slice(0, 8),
       }
     },
     staleTime: 15_000,

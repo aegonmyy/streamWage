@@ -1,15 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
   ArrowRightLeft,
   ArrowUpRight,
   BadgeCheck,
-  BriefcaseBusiness,
   Check,
-  CircleHelp,
-  Clock3,
   Copy,
   Wallet,
 } from "lucide-react"
@@ -20,6 +18,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import {
   formatDuration,
@@ -29,7 +38,7 @@ import {
   usePayrollWorkerData,
 } from "@/hooks/use-payroll-worker-data"
 import { getPayrollContractConfig } from "@/lib/payroll-contract"
-import { getTransactionToastDescription } from "@/lib/transaction-links"
+import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
 type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
@@ -44,7 +53,6 @@ const WORKER_SECTIONS: Array<{
   { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds, review totals, and understand how your timeline behaves." },
   { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Accept, reject, or expire proposed terms that pause your accrual." },
   { id: "profile", label: "Profile", eyebrow: "Identity", description: "Wallet details, metadata, and migration tools for moving your worker record." },
-  { id: "support", label: "Support", eyebrow: "Guide", description: "Plain-English help for timelines, pauses, migration, and treasury warnings." },
 ]
 
 function toAddressOrThrow(value: string, label: string): Address {
@@ -101,36 +109,23 @@ export function WorkerDashboard() {
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
-  const overviewPriority = useMemo(
+  const recentTransactions = useMemo(
     () =>
-      data
-        ? [
-            {
-              title: "Claimable Now",
-              value: `${formatEth(data.claimableWei)} ETH`,
-              hint: "Use Claim when you want funds sent to the connected wallet immediately.",
-              target: "earnings" as const,
-            },
-            {
-              title: "Pending Terms",
-              value: data.pendingProposal ? "Action required" : "No open proposal",
-              hint: data.pendingProposal
-                ? "Accrual is paused until you accept, reject, or the proposal expires."
-                : "No operator proposal is waiting on you.",
-              target: "proposals" as const,
-            },
-            {
-              title: "Wallet Identity",
-              value: data.pendingMigration ? "Migration pending" : "Current wallet live",
-              hint: data.pendingMigration
-                ? "The destination wallet must accept the migration to complete the move."
-                : "Open profile tools when you need to move your worker record.",
-              target: "profile" as const,
-            },
-          ]
-        : [],
-    [data],
+      (data?.recentActivity ?? [])
+        .filter((item) => item.txHash)
+        .slice(0, 4)
+        .map((item) => ({
+          ...item,
+          explorerUrl: getTransactionExplorerUrl(contract.chainId, item.txHash!),
+        })),
+    [contract.chainId, data?.recentActivity],
   )
+
+  useEffect(() => {
+    const handler = () => setSection("support")
+    window.addEventListener("streamwage:open-worker-support", handler)
+    return () => window.removeEventListener("streamwage:open-worker-support", handler)
+  }, [])
 
   async function executeWrite(
     actionLabel: string,
@@ -218,31 +213,7 @@ export function WorkerDashboard() {
         <StatCard title="Worker Runway" value={formatDuration(data.runwaySeconds)} hint="Personalized runway from `workerRunway(address)`." />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Priority Queue</CardTitle>
-            <CardDescription>Your worker dashboard should answer what you can do now and what is waiting on you.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {overviewPriority.map((item) => (
-              <button
-                key={item.title}
-                type="button"
-                onClick={() => setSection(item.target)}
-                className="flex w-full items-start justify-between rounded-2xl border border-border/70 bg-card px-4 py-4 text-left transition hover:border-primary/40 hover:bg-muted/40"
-              >
-                <div>
-                  <p className="text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">{item.value}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-                </div>
-                <ArrowUpRight className="mt-1 h-4 w-4 text-muted-foreground" />
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
         <Card className={cn(isProposalUrgent && "border-destructive/40")}>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -263,7 +234,72 @@ export function WorkerDashboard() {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Latest Transactions</CardTitle>
+            <CardDescription>Recent worker-related transactions with explorer links.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No worker transactions indexed yet.</p>
+            ) : (
+              recentTransactions.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-border/70 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <span className="text-xs text-muted-foreground">({item.actionLabel})</span>
+                  </div>
+                  {item.explorerUrl ? (
+                    <Link
+                      href={item.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                    >
+                      {item.txHash}
+                    </Link>
+                  ) : (
+                    <p className="mt-2 font-mono text-xs text-muted-foreground">{item.txHash}</p>
+                  )}
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent activity</CardTitle>
+          <CardDescription>Contract events relevant to this worker, newest first.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {data.recentActivity.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No recent worker events yet.</p>
+          ) : (
+            data.recentActivity.map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "rounded-2xl border border-border/70 px-4 py-4",
+                  item.tone === "warning" && "border-destructive/30 bg-destructive/5",
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
+                  </div>
+                  <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full">
+                    {item.tone === "warning" ? "Attention" : "Event"}
+                  </Badge>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 
@@ -283,22 +319,38 @@ export function WorkerDashboard() {
             <CardDescription>Primary worker action. Use `claim()` to send funds to the connected wallet.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button
-              className="gap-2 rounded-xl"
-              disabled={isWalletPending || data.claimableWei === 0n}
-              onClick={() =>
-                void executeWrite("Claim earnings", async () =>
-                  writeContractAsync({
-                    ...contract,
-                    functionName: "claim",
-                    args: [],
-                  }),
-                )
-              }
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              Claim To Connected Wallet
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button className="gap-2 rounded-xl" disabled={isWalletPending || data.claimableWei === 0n}>
+                  <ArrowUpRight className="h-4 w-4" />
+                  Claim To Connected Wallet
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Claim to connected wallet?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will send {formatEth(data.claimableWei)} ETH to {address ? shortAddress(address) : "the connected wallet"}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() =>
+                      void executeWrite("Claim earnings", async () =>
+                        writeContractAsync({
+                          ...contract,
+                          functionName: "claim",
+                          args: [],
+                        }),
+                      )
+                    }
+                  >
+                    Confirm Claim
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <p className="text-sm text-muted-foreground">
               This sends your claimable balance to {address ? shortAddress(address) : "the connected wallet"}.
             </p>
@@ -312,22 +364,37 @@ export function WorkerDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono" />
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              disabled={isWalletPending || data.claimableWei === 0n}
-              onClick={() =>
-                void executeWrite("Claim to address", async () =>
-                  writeContractAsync({
-                    ...contract,
-                    functionName: "claimTo",
-                    args: [toAddressOrThrow(claimToAddress, "Recipient")],
-                  }),
-                )
-              }
-            >
-              Claim To Recipient
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="rounded-xl" disabled={isWalletPending || data.claimableWei === 0n}>
+                  Claim To Recipient
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Claim to custom recipient?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will send {formatEth(data.claimableWei)} ETH to {claimToAddress || "the entered address"}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() =>
+                      void executeWrite("Claim to address", async () =>
+                        writeContractAsync({
+                          ...contract,
+                          functionName: "claimTo",
+                          args: [toAddressOrThrow(claimToAddress, "Recipient")],
+                        }),
+                      )
+                    }
+                  >
+                    Confirm Payout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
@@ -356,37 +423,66 @@ export function WorkerDashboard() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  className="rounded-xl"
-                  disabled={isWalletPending}
-                  onClick={() =>
-                    void executeWrite("Accept terms", async () =>
-                      writeContractAsync({
-                        ...contract,
-                        functionName: "acceptTerms",
-                        args: [],
-                      }),
-                    )
-                  }
-                >
-                  Accept Terms
-                </Button>
-                <Button
-                  variant="outline"
-                  className="rounded-xl"
-                  disabled={isWalletPending}
-                  onClick={() =>
-                    void executeWrite("Reject terms", async () =>
-                      writeContractAsync({
-                        ...contract,
-                        functionName: "rejectTerms",
-                        args: [],
-                      }),
-                    )
-                  }
-                >
-                  Reject Terms
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button className="rounded-xl" disabled={isWalletPending}>Accept Terms</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Accept proposed terms?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This applies the proposed timeline and payment terms immediately.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Back</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() =>
+                          void executeWrite("Accept terms", async () =>
+                            writeContractAsync({
+                              ...contract,
+                              functionName: "acceptTerms",
+                              args: [],
+                            }),
+                          )
+                        }
+                      >
+                        Accept
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" className="rounded-xl" disabled={isWalletPending}>Reject Terms</Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Reject proposed terms?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {data.pendingProposal.terminateOnReject
+                          ? "Rejecting this proposal can terminate your worker record."
+                          : "Rejecting restores your previous worker terms."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Back</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() =>
+                          void executeWrite("Reject terms", async () =>
+                            writeContractAsync({
+                              ...contract,
+                              functionName: "rejectTerms",
+                              args: [],
+                            }),
+                          )
+                        }
+                      >
+                        Reject
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <Button
                   variant="outline"
                   className="rounded-xl"
@@ -456,38 +552,69 @@ export function WorkerDashboard() {
           <CardContent className="space-y-4">
             <Input value={migrationAddress} onChange={(event) => setMigrationAddress(event.target.value)} placeholder="New wallet address" className="font-mono" />
             <div className="flex flex-wrap gap-2">
-              <Button
-                className="gap-2 rounded-xl"
-                disabled={isWalletPending}
-                onClick={() =>
-                  void executeWrite("Propose migration", async () =>
-                    writeContractAsync({
-                      ...contract,
-                      functionName: "proposeMigration",
-                      args: [toAddressOrThrow(migrationAddress, "New address")],
-                    }),
-                  )
-                }
-              >
-                <ArrowRightLeft className="h-4 w-4" />
-                Propose Migration
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                disabled={isWalletPending || !data.pendingMigration}
-                onClick={() =>
-                  void executeWrite("Cancel migration", async () =>
-                    writeContractAsync({
-                      ...contract,
-                      functionName: "cancelMigration",
-                      args: [],
-                    }),
-                  )
-                }
-              >
-                Cancel Migration
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="gap-2 rounded-xl" disabled={isWalletPending}>
+                    <ArrowRightLeft className="h-4 w-4" />
+                    Propose Migration
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Propose wallet migration?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Your worker record will stay on the current wallet until {migrationAddress || "the new wallet"} accepts.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Back</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        void executeWrite("Propose migration", async () =>
+                          writeContractAsync({
+                            ...contract,
+                            functionName: "proposeMigration",
+                            args: [toAddressOrThrow(migrationAddress, "New address")],
+                          }),
+                        )
+                      }
+                    >
+                      Propose
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="rounded-xl" disabled={isWalletPending || !data.pendingMigration}>
+                    Cancel Migration
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel pending migration?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This removes the pending move to {data.pendingMigration?.newAddress ? shortAddress(data.pendingMigration.newAddress) : "the destination wallet"}.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Back</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        void executeWrite("Cancel migration", async () =>
+                          writeContractAsync({
+                            ...contract,
+                            functionName: "cancelMigration",
+                            args: [],
+                          }),
+                        )
+                      }
+                    >
+                      Cancel Migration
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
@@ -495,26 +622,71 @@ export function WorkerDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Accept migration</CardTitle>
-            <CardDescription>Use this on the destination wallet to accept a proposed migration.</CardDescription>
+            <CardDescription>
+              Use this on the destination wallet to accept a proposed migration.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {data.incomingMigrationRequests.length > 0 ? (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm font-medium text-foreground">Incoming migration requests</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {data.incomingMigrationRequests.map((oldAddress) => (
+                    <Button
+                      key={oldAddress}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full font-mono"
+                      onClick={() => setMigrationOldAddress(oldAddress)}
+                    >
+                      {shortAddress(oldAddress)}
+                    </Button>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Tap one to prefill the old worker address before accepting.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-border/70 p-4">
+                <p className="text-sm text-muted-foreground">
+                  No incoming migration request was detected for this wallet. If another wallet nominated this address, paste the old worker address below.
+                </p>
+              </div>
+            )}
             <Input value={migrationOldAddress} onChange={(event) => setMigrationOldAddress(event.target.value)} placeholder="Old worker address" className="font-mono" />
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              disabled={isWalletPending}
-              onClick={() =>
-                void executeWrite("Accept migration", async () =>
-                  writeContractAsync({
-                    ...contract,
-                    functionName: "acceptMigration",
-                    args: [toAddressOrThrow(migrationOldAddress, "Old address")],
-                  }),
-                )
-              }
-            >
-              Accept Migration
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="rounded-xl" disabled={isWalletPending}>
+                  Accept Migration
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Accept migration into this wallet?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will move the worker state from {migrationOldAddress || "the old wallet"} into {address ? shortAddress(address) : "this wallet"}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() =>
+                      void executeWrite("Accept migration", async () =>
+                        writeContractAsync({
+                          ...contract,
+                          functionName: "acceptMigration",
+                          args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+                        }),
+                      )
+                    }
+                  >
+                    Accept Migration
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
@@ -539,6 +711,10 @@ export function WorkerDashboard() {
         {
           title: "Migration flow",
           body: "You propose a new wallet from the current worker address. Then the destination wallet accepts the migration. Only after acceptance does the worker state move.",
+        },
+        {
+          title: "Recent activity",
+          body: "The overview activity feed comes from payroll contract events related to your worker address, including claims, proposals, migrations, and low-treasury warnings.",
         },
       ].map((item) => (
         <Card key={item.title}>
@@ -574,6 +750,9 @@ export function WorkerDashboard() {
                 <Badge className="rounded-full">Worker</Badge>
                 {data.pendingProposal ? (
                   <Badge variant="destructive" className="rounded-full">Action required</Badge>
+                ) : null}
+                {section === "support" ? (
+                  <Badge variant="secondary" className="rounded-full">Help open</Badge>
                 ) : null}
               </div>
             </div>
@@ -612,22 +791,53 @@ export function WorkerDashboard() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  {selectedSection.eyebrow}
+                  {section === "support" ? "Guide" : selectedSection.eyebrow}
                 </p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  {selectedSection.label}
+                  {section === "support" ? "Support" : selectedSection.label}
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                  {section === "support"
+                    ? "Plain-English help for timelines, pauses, migration, and treasury warnings."
+                    : selectedSection.description}
+                </p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Worker State</p>
-                <p className="mt-1 text-sm text-foreground">
-                  Your live record comes from <span className="font-mono text-xs">workers(address)</span>, <span className="font-mono text-xs">claimable(address)</span>, and related reads.
-                </p>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Latest Txns</p>
+                  {section === "support" ? (
+                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setSection("overview")}>
+                      Back
+                    </Button>
+                  ) : null}
+                </div>
+                <div className="mt-2 space-y-2">
+                  {recentTransactions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
+                  ) : (
+                    recentTransactions.map((item) =>
+                      item.explorerUrl ? (
+                        <Link
+                          key={item.id}
+                          href={item.explorerUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                        >
+                          {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
+                        </Link>
+                      ) : (
+                        <p key={item.id} className="font-mono text-xs text-muted-foreground">
+                          {shortAddress(item.txHash!)} ({item.actionLabel})
+                        </p>
+                      ),
+                    )
+                  )}
+                </div>
+                {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
+                <p className="mt-2 text-xs text-muted-foreground">
                   {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
                 </p>
-                {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Last transaction confirmed.</p> : null}
               </div>
             </div>
           </div>
