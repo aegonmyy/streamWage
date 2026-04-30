@@ -1,5 +1,6 @@
 "use client"
 
+import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useMemo, useState } from "react"
 import {
   AlertTriangle,
@@ -52,9 +53,12 @@ import { getPayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
+import { SidebarNav } from "@/components/dashboard/sidebar-nav"
+
 type AdminSectionId = "overview" | "workers" | "proposals" | "treasury" | "admins"
 
-const SIDEBAR_SECTIONS: Array<{
+export const SIDEBAR_SECTIONS: Array<{
   id: AdminSectionId
   label: string
   eyebrow: string
@@ -180,10 +184,28 @@ export function AdminDashboard() {
     }
   }
 
-  if (!contract) {
+  if (!isConfigured) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
         Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable the admin dashboard.
+      </div>
+    )
+  }
+
+  const { isConnected } = useAccount()
+  if (!isConnected) {
+    return (
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Shield className="h-8 w-8" />
+        </div>
+        <h2 className="mt-6 text-xl font-semibold text-foreground">Connect Admin Wallet</h2>
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+          Connect an authorized operator or owner wallet to manage workers, treasury, and permissions.
+        </p>
+        <div className="mt-8">
+          <ConnectButton />
+        </div>
       </div>
     )
   }
@@ -831,11 +853,11 @@ export function AdminDashboard() {
   )
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-24 xl:self-start">
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-card">
-            <div className="border-b border-border/70 px-5 py-5">
+    <SidebarProvider>
+      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
+        <Sidebar collapsible="offcanvas" className="xl:sticky xl:top-24 xl:self-start">
+          <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card">
+            <SidebarHeader className="border-b border-border/70 px-5 py-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <BriefcaseBusiness className="h-5 w-5" />
@@ -853,69 +875,56 @@ export function AdminDashboard() {
                   {isOwner ? "Owner" : "Operator"}
                 </Badge>
               </div>
-            </div>
+            </SidebarHeader>
 
-            <div className="space-y-1 p-3">
-              {SIDEBAR_SECTIONS.map((item) => {
-                const active = item.id === section
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSection(item.id)}
-                    className={cn(
-                      "w-full rounded-2xl px-4 py-3 text-left transition",
-                      active ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted",
-                    )}
-                  >
-                    <p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", active ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                      {item.eyebrow}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold">{item.label}</p>
-                    <p className={cn("mt-1 text-xs leading-5", active ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                      {item.description}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
+            <SidebarNav 
+              section={section} 
+              setSection={setSection} 
+              items={SIDEBAR_SECTIONS}
+              highlightMap={{
+                proposals: pendingProposals.length > 0,
+                treasury: isLowTreasury
+              }}
+            />
           </div>
-        </aside>
+        </Sidebar>
 
-        <section className="min-w-0 space-y-6">
-          <div className="rounded-[32px] border border-border/70 bg-card p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  {selectedSection.eyebrow}
-                </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  {selectedSection.label}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Role Check</p>
-                <p className="mt-1 text-sm text-foreground">
-                  Access is resolved from <span className="font-mono text-xs">owner()</span> and <span className="font-mono text-xs">admins(address)</span>.
-                </p>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">
-                  {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
-                </p>
-                {receipt.isSuccess ? (
-                  <p className="mt-2 text-xs text-primary">Last transaction confirmed.</p>
-                ) : null}
+        <main className="flex-1 min-w-0">
+          <section className="min-w-0 space-y-6">
+            <div className="rounded-[32px] border border-border/70 bg-card p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {selectedSection.eyebrow}
+                  </p>
+                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                    {selectedSection.label}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Role Check</p>
+                  <p className="mt-1 text-sm text-foreground">
+                    Access is resolved from <span className="font-mono text-xs">owner()</span> and <span className="font-mono text-xs">admins(address)</span>.
+                  </p>
+                  <p className="mt-2 font-mono text-xs text-muted-foreground">
+                    {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
+                  </p>
+                  {receipt.isSuccess ? (
+                    <p className="mt-2 text-xs text-primary">Last transaction confirmed.</p>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
 
-          {section === "overview" ? renderOverview() : null}
-          {section === "workers" ? renderWorkers() : null}
-          {section === "proposals" ? renderProposals() : null}
-          {section === "treasury" ? renderTreasury() : null}
-          {section === "admins" ? renderAdmins() : null}
-        </section>
+            {section === "overview" ? renderOverview() : null}
+            {section === "workers" ? renderWorkers() : null}
+            {section === "proposals" ? renderProposals() : null}
+            {section === "treasury" ? renderTreasury() : null}
+            {section === "admins" ? renderAdmins() : null}
+          </section>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }

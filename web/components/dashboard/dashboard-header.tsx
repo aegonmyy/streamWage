@@ -63,14 +63,14 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
                 chain &&
                 (!authenticationStatus || authenticationStatus === "authenticated")
 
+              if (!ready) {
+                return (
+                  <div className="flex h-9 w-32 animate-pulse rounded-xl bg-muted" aria-hidden="true" />
+                )
+              }
+
               return (
-                <div
-                  className="flex shrink-0 items-center gap-2"
-                  {...(!ready && {
-                    "aria-hidden": true,
-                    style: { opacity: 0, pointerEvents: "none", userSelect: "none" },
-                  })}
-                >
+                <div className="flex shrink-0 items-center gap-2">
                   {!connected ? (
                     <Button
                       type="button"

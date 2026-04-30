@@ -1,5 +1,6 @@
 "use client"
 
+import { ConnectButton } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import {
@@ -29,6 +30,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
+import { SidebarNav } from "@/components/dashboard/sidebar-nav"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import {
   formatDuration,
@@ -43,7 +46,7 @@ import { cn } from "@/lib/utils"
 
 type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
 
-const WORKER_SECTIONS: Array<{
+export const WORKER_SECTIONS: Array<{
   id: WorkerSectionId
   label: string
   eyebrow: string
@@ -162,8 +165,17 @@ export function WorkerDashboard() {
 
   if (!isConnected) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-        Connect a wallet to view worker earnings, proposals, and migration state.
+      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Wallet className="h-8 w-8" />
+        </div>
+        <h2 className="mt-6 text-xl font-semibold text-foreground">Connect your wallet</h2>
+        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+          Connect a wallet to view your worker earnings, pending proposals, and migration state.
+        </p>
+        <div className="mt-8">
+          <ConnectButton />
+        </div>
       </div>
     )
   }
@@ -730,11 +742,11 @@ export function WorkerDashboard() {
   )
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="xl:sticky xl:top-24 xl:self-start">
-          <div className="overflow-hidden rounded-[28px] border border-border/70 bg-card">
-            <div className="border-b border-border/70 px-5 py-5">
+    <SidebarProvider>
+      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
+        <Sidebar collapsible="offcanvas" className="xl:sticky xl:top-24 xl:self-start">
+          <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card">
+            <SidebarHeader className="border-b border-border/70 px-5 py-5">
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Wallet className="h-5 w-5" />
@@ -755,100 +767,84 @@ export function WorkerDashboard() {
                   <Badge variant="secondary" className="rounded-full">Help open</Badge>
                 ) : null}
               </div>
-            </div>
+            </SidebarHeader>
+            <SidebarNav 
+              section={section} 
+              setSection={setSection} 
+              items={WORKER_SECTIONS}
+              highlightMap={{
+                proposals: !!data.pendingProposal
+              }}
+            />
+          </div>
+        </Sidebar>
 
-            <div className="space-y-1 p-3">
-              {WORKER_SECTIONS.map((item) => {
-                const active = item.id === section
-                const highlightProposal = item.id === "proposals" && data.pendingProposal
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setSection(item.id)}
-                    className={cn(
-                      "w-full rounded-2xl px-4 py-3 text-left transition",
-                      active ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-muted",
-                      !active && highlightProposal && "border border-destructive/30 bg-destructive/5",
+        <main className="flex-1 min-w-0">
+          <section className="min-w-0 space-y-6">
+            <div className="rounded-[32px] border border-border/70 bg-card p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    {section === "support" ? "Guide" : selectedSection.eyebrow}
+                  </p>
+                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                    {section === "support" ? "Support" : selectedSection.label}
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                    {section === "support"
+                      ? "Plain-English help for timelines, pauses, migration, and treasury warnings."
+                      : selectedSection.description}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Latest Txns</p>
+                    {section === "support" ? (
+                      <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setSection("overview")}>
+                        Back
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {recentTransactions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
+                    ) : (
+                      recentTransactions.map((item) =>
+                        item.explorerUrl ? (
+                          <Link
+                            key={item.id}
+                            href={item.explorerUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                          >
+                            {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
+                          </Link>
+                        ) : (
+                          <p key={item.id} className="font-mono text-xs text-muted-foreground">
+                            {shortAddress(item.txHash!)} ({item.actionLabel})
+                          </p>
+                        ),
+                      )
                     )}
-                  >
-                    <p className={cn("text-[11px] font-semibold uppercase tracking-[0.18em]", active ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                      {item.eyebrow}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold">{item.label}</p>
-                    <p className={cn("mt-1 text-xs leading-5", active ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                      {item.description}
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </aside>
-
-        <section className="min-w-0 space-y-6">
-          <div className="rounded-[32px] border border-border/70 bg-card p-6">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  {section === "support" ? "Guide" : selectedSection.eyebrow}
-                </p>
-                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  {section === "support" ? "Support" : selectedSection.label}
-                </h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                  {section === "support"
-                    ? "Plain-English help for timelines, pauses, migration, and treasury warnings."
-                    : selectedSection.description}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Latest Txns</p>
-                  {section === "support" ? (
-                    <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setSection("overview")}>
-                      Back
-                    </Button>
-                  ) : null}
+                  </div>
+                  {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
+                  </p>
                 </div>
-                <div className="mt-2 space-y-2">
-                  {recentTransactions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
-                  ) : (
-                    recentTransactions.map((item) =>
-                      item.explorerUrl ? (
-                        <Link
-                          key={item.id}
-                          href={item.explorerUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
-                        >
-                          {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
-                        </Link>
-                      ) : (
-                        <p key={item.id} className="font-mono text-xs text-muted-foreground">
-                          {shortAddress(item.txHash!)} ({item.actionLabel})
-                        </p>
-                      ),
-                    )
-                  )}
-                </div>
-                {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
-                </p>
               </div>
             </div>
-          </div>
 
-          {section === "overview" ? renderOverview() : null}
-          {section === "earnings" ? renderEarnings() : null}
-          {section === "proposals" ? renderProposals() : null}
-          {section === "profile" ? renderProfile() : null}
-          {section === "support" ? renderSupport() : null}
-        </section>
+            {section === "overview" ? renderOverview() : null}
+            {section === "earnings" ? renderEarnings() : null}
+            {section === "proposals" ? renderProposals() : null}
+            {section === "profile" ? renderProfile() : null}
+            {section === "support" ? renderSupport() : null}
+          </section>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }
+
