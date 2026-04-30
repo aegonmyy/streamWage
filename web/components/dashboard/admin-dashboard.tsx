@@ -17,7 +17,7 @@ import {
   Zap,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi"
+import { useAccount, useWaitForTransactionReceipt } from "wagmi"
 import { formatEther, getAddress, isAddress, parseEther, type Address } from "viem"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,7 @@ import {
   type PayrollTimeline,
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
+import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import { getPayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
@@ -121,7 +122,7 @@ function StatCard({
 export function AdminDashboard() {
   const contract = getPayrollContractConfig()
   const { address: connectedAddress } = useAccount()
-  const { contractAddress, chainId, isConfigured } = usePayrollRole()
+  const { contractAddress, chainId, isConfigured, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollAdminData()
   const [section, setSection] = useState<AdminSectionId>("overview")
 
@@ -145,7 +146,7 @@ export function AdminDashboard() {
   const [adminAddress, setAdminAddress] = useState("")
   const [ownershipAddress, setOwnershipAddress] = useState("")
 
-  const { writeContractAsync, data: hash, isPending: isWalletPending } = useWriteContract()
+  const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const selectedSection = SIDEBAR_SECTIONS.find((item) => item.id === section) ?? SIDEBAR_SECTIONS[0]
@@ -193,7 +194,7 @@ export function AdminDashboard() {
   }
 
   const { isConnected } = useAccount()
-  if (!isConnected) {
+  if (!isConnected && !isDevMode) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">

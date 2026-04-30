@@ -60,16 +60,6 @@ export function SidebarNav({
                       {item.eyebrow}
                     </p>
                     <p className="text-sm font-semibold">{item.label}</p>
-                    <p
-                      className={cn(
-                        "text-xs leading-relaxed line-clamp-2",
-                        active
-                          ? "text-primary-foreground/80"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {item.description}
-                    </p>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );

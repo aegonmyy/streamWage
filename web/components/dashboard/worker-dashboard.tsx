@@ -13,7 +13,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi"
+import { useAccount, useWaitForTransactionReceipt } from "wagmi"
 import { getAddress, isAddress, type Address } from "viem"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ import {
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/dashboard/sidebar-nav"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
+import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import {
   formatDuration,
   formatEth,
@@ -100,7 +101,7 @@ function StatCard({
 export function WorkerDashboard() {
   const contract = getPayrollContractConfig()
   const { address, isConnected } = useAccount()
-  const { isConfigured, contractAddress, chainId } = usePayrollRole()
+  const { isConfigured, contractAddress, chainId, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollWorkerData()
   const [section, setSection] = useState<WorkerSectionId>("overview")
   const [claimToAddress, setClaimToAddress] = useState("")
@@ -108,7 +109,7 @@ export function WorkerDashboard() {
   const [migrationOldAddress, setMigrationOldAddress] = useState("")
   const [copied, setCopied] = useState(false)
 
-  const { writeContractAsync, data: hash, isPending: isWalletPending } = useWriteContract()
+  const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
@@ -163,7 +164,7 @@ export function WorkerDashboard() {
     )
   }
 
-  if (!isConnected) {
+  if (!isConnected && !isDevMode) {
     return (
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -753,9 +754,6 @@ export function WorkerDashboard() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">Worker Dashboard</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Centered on claiming, proposals, and wallet identity.
-                  </p>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">

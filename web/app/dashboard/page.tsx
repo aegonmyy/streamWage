@@ -8,20 +8,20 @@ import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { Wallet } from "lucide-react"
 
 export default function DashboardIndexPage() {
-  const { role, isConnected, isLoading } = usePayrollRole()
+  const { role, isConnected, isLoading, isDevMode } = usePayrollRole()
   const router = useRouter()
 
   useEffect(() => {
     if (isLoading) return
-    if (!isConnected) return
+    if (!isConnected && !isDevMode) return
     router.replace(getDashboardPathForRole(role))
-  }, [isConnected, isLoading, role, router])
+  }, [isConnected, isDevMode, isLoading, role, router])
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-32 text-center">
       {isLoading ? (
         <p className="text-sm text-muted-foreground animate-pulse">Checking wallet permissions…</p>
-      ) : isConnected ? (
+      ) : (isConnected || isDevMode) ? (
         <p className="text-sm text-muted-foreground">Opening dashboard…</p>
       ) : (
         <>

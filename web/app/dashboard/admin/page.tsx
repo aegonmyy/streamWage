@@ -7,19 +7,19 @@ import { AdminSignatureGate } from "@/components/dashboard/admin-signature-gate"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 
 export default function AdminDashboardPage() {
-  const { isConnected, isAdmin, isLoading } = usePayrollRole()
+  const { isConnected, isAdmin, isLoading, isDevMode } = usePayrollRole()
   const router = useRouter()
 
   useEffect(() => {
     if (isLoading) return
-    if (!isConnected) {
+    if (!isConnected && !isDevMode) {
       router.replace("/dashboard")
       return
     }
-    if (!isAdmin) {
+    if (!isAdmin && !isDevMode) {
       router.replace("/dashboard")
     }
-  }, [isAdmin, isConnected, isLoading, router])
+  }, [isAdmin, isConnected, isDevMode, isLoading, router])
 
   if (isLoading) {
     return (
@@ -29,7 +29,7 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (!isConnected || (isConnected && !isAdmin)) {
+  if ((!isConnected && !isDevMode) || (isConnected && !isAdmin && !isDevMode)) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-muted-foreground">
         Redirecting…
