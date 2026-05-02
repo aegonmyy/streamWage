@@ -120,9 +120,9 @@ export function WorkerDashboard() {
         .slice(0, 4)
         .map((item) => ({
           ...item,
-          explorerUrl: getTransactionExplorerUrl(contract.chainId, item.txHash!),
+          explorerUrl: contract ? getTransactionExplorerUrl(contract.chainId, item.txHash!) : "",
         })),
-    [contract.chainId, data?.recentActivity],
+    [contract, data?.recentActivity],
   )
 
   useEffect(() => {

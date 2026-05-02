@@ -279,19 +279,19 @@ export function WorkerTable({
                         Propose Terms
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      {worker.active && !hasPendingProposal && (
+                      {worker.status === "active" && !hasPendingProposal && (
                         <DropdownMenuItem className="text-sm font-medium text-amber-600 focus:bg-amber-500/5" onClick={() => onAction("pause", worker)}>
                           <Pause className="h-3.5 w-3.5 mr-2" />
                           Pause
                         </DropdownMenuItem>
                       )}
-                      {!worker.active && !hasPendingProposal && (
+                      {worker.status === "paused" && !hasPendingProposal && (
                         <DropdownMenuItem className="text-sm font-medium text-emerald-600 focus:bg-emerald-500/5" onClick={() => onAction("resume", worker)}>
                           <Play className="h-3.5 w-3.5 mr-2" />
                           Resume
                         </DropdownMenuItem>
                       )}
-                      {worker.timeline === "Trigger" && worker.active && (
+                      {worker.timeline === "Trigger" && worker.status === "active" && (
                         <DropdownMenuItem className="text-sm font-medium text-primary focus:bg-primary/5" onClick={() => onAction("grant-payment", worker)}>
                           <Zap className="h-3.5 w-3.5 mr-2" />
                           Grant Payment

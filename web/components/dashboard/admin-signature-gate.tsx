@@ -154,9 +154,6 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
       <Card>
         <CardHeader>
           <CardTitle>Verify Admin Wallet</CardTitle>
-          <CardDescription>
-            Sign a message once per browser session before opening admin controls.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-6 text-muted-foreground">
@@ -166,9 +163,6 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
           <Button type="button" onClick={handleVerify} disabled={isPending || !message}>
             {isPending ? "Waiting for signature…" : "Sign Message"}
           </Button>
-          <p className="text-xs text-muted-foreground">
-            This session is locally signature-verified and expires after 30 minutes. For stronger auth, verify server-side and issue a session cookie.
-          </p>
         </CardContent>
       </Card>
     </div>

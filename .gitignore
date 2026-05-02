@@ -20,3 +20,5 @@ docs/
 # Editor / agent metadata
 .cursor/
 .codex
+.vercel
+.env*.local
