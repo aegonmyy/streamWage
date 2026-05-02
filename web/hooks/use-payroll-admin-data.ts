@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { usePublicClient, useWatchContractEvent } from "wagmi"
 import { decodeEventLog, formatEther, formatUnits, getAddress, type Address } from "viem"
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract"
+import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
 
 export type PayrollTimeline = "Hourly" | "Monthly" | "Custom" | "Trigger"
 
@@ -27,6 +27,9 @@ export type AdminWorkerRecord = {
     terminateOnReject: boolean
     expiryTimestamp: bigint
   } | null
+  pendingMigration: {
+    newAddress: Address
+  } | null
   status: "active" | "paused"
 }
 
@@ -39,6 +42,7 @@ export type PayrollAdminData = {
   runwaySeconds: bigint
   defaultProposalWindowSeconds: bigint
   lowTreasuryThresholdSeconds: bigint
+  lifetimePaidWei: bigint
 }
 
 const QUERY_KEY = ["payroll-admin"]
@@ -112,7 +116,7 @@ export function usePayrollAdminData() {
         throw new Error("Payroll contract is not configured.")
       }
 
-      const logs = await publicClient.getLogs({
+      const logs = await getLogsInChunks(publicClient, {
         address: contract.address,
         fromBlock: contract.fromBlock,
         toBlock: "latest",
@@ -207,20 +211,33 @@ export function usePayrollAdminData() {
                   functionName: "pendingTerms",
                   args: [workerAddress],
                 },
+                {
+                  ...contract,
+                  functionName: "pendingMigrations",
+                  args: [workerAddress],
+                },
               ]),
             })
           : []
 
       const workerRecords: AdminWorkerRecord[] = []
+      let lifetimePaidWei = 0n
 
       for (let index = 0; index < workerAddresses.length; index += 1) {
         const workerAddress = workerAddresses[index]
-        const workerResult = workerReads[index * 4]
-        const claimableResult = workerReads[index * 4 + 1]
-        const runwayResult = workerReads[index * 4 + 2]
-        const pendingTermsResult = workerReads[index * 4 + 3]
+        const workerResult = workerReads[index * 5]
+        const claimableResult = workerReads[index * 5 + 1]
+        const runwayResult = workerReads[index * 5 + 2]
+        const pendingTermsResult = workerReads[index * 5 + 3]
+        const pendingMigrationResult = workerReads[index * 5 + 4]
 
-        if (workerResult?.status !== "success" || claimableResult?.status !== "success" || runwayResult?.status !== "success" || pendingTermsResult?.status !== "success") {
+        if (
+          workerResult?.status !== "success" || 
+          claimableResult?.status !== "success" || 
+          runwayResult?.status !== "success" || 
+          pendingTermsResult?.status !== "success" ||
+          pendingMigrationResult?.status !== "success"
+        ) {
           continue
         }
 
@@ -230,6 +247,9 @@ export function usePayrollAdminData() {
         const metadata = worker[8]
         const parsedMetadata = parseMetadata(metadata)
         const pendingTerms = pendingTermsResult.result as readonly [boolean, number, bigint, bigint, boolean, bigint]
+        const pendingMigration = pendingMigrationResult.result as readonly [boolean, Address]
+
+        lifetimePaidWei += worker[6]
 
         workerRecords.push({
           address: workerAddress,
@@ -252,6 +272,11 @@ export function usePayrollAdminData() {
                 expiryTimestamp: pendingTerms[5],
               }
             : null,
+          pendingMigration: pendingMigration[0]
+            ? {
+                newAddress: getAddress(pendingMigration[1]),
+              }
+            : null,
           status: worker[1] ? "active" : "paused",
         })
       }
@@ -265,9 +290,11 @@ export function usePayrollAdminData() {
         runwaySeconds,
         defaultProposalWindowSeconds,
         lowTreasuryThresholdSeconds,
+        lifetimePaidWei,
       }
     },
     staleTime: 15_000,
+    refetchInterval: 30_000,
   })
 
   useWatchContractEvent({

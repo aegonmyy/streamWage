@@ -1,45 +1,19 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense } from "react"
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard"
-import { AdminSignatureGate } from "@/components/dashboard/admin-signature-gate"
-import { usePayrollRole } from "@/hooks/use-payroll-role"
 
 export default function AdminDashboardPage() {
-  const { isConnected, isAdmin, isLoading, isDevMode } = usePayrollRole()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (isLoading) return
-    if (!isConnected && !isDevMode) {
-      router.replace("/dashboard")
-      return
-    }
-    if (!isAdmin && !isDevMode) {
-      router.replace("/dashboard")
-    }
-  }, [isAdmin, isConnected, isDevMode, isLoading, router])
-
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-muted-foreground">
-        Checking wallet permissions…
-      </div>
-    )
-  }
-
-  if ((!isConnected && !isDevMode) || (isConnected && !isAdmin && !isDevMode)) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-muted-foreground">
-        Redirecting…
-      </div>
-    )
-  }
-
   return (
-    <AdminSignatureGate>
+    <Suspense fallback={
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground font-medium">Loading admin dashboard...</p>
+        </div>
+      </div>
+    }>
       <AdminDashboard />
-    </AdminSignatureGate>
+    </Suspense>
   )
 }

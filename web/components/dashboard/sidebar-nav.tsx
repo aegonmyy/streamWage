@@ -13,8 +13,8 @@ import {
 export interface NavItem {
   id: string;
   label: string;
-  eyebrow: string;
   description: string;
+  icon: any;
 }
 
 export function SidebarNav({
@@ -36,30 +36,28 @@ export function SidebarNav({
             {items.map((item) => {
               const active = item.id === section;
               const highlighted = highlightMap[item.id];
+              const Icon = item.icon;
 
               return (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={active}
                     onClick={() => setSection(item.id)}
+                    tooltip={item.label}
                     className={cn(
-                      "h-auto flex-col items-start gap-1 px-4 py-3 transition-all rounded-2xl",
+                      "flex items-center gap-3 px-4 py-3 transition-all rounded-2xl group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted",
                       !active &&
                         highlighted &&
                         "border border-destructive/30 bg-destructive/5 hover:bg-destructive/10",
                     )}
                   >
-                    <p
-                      className={cn(
-                        "text-[10px] font-bold uppercase tracking-[0.2em]",
-                        active
-                          ? "text-primary-foreground/70"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {item.eyebrow}
-                    </p>
-                    <p className="text-sm font-semibold">{item.label}</p>
+                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
+                      {item.label}
+                    </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );

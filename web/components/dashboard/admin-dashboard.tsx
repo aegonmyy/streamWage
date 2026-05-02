@@ -1,18 +1,29 @@
 "use client"
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { useMemo, useState } from "react"
+import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
+import { useMemo, useState, useEffect } from "react"
 import {
   AlertTriangle,
   BadgeCheck,
   BriefcaseBusiness,
+  CheckCircle2,
+  ChevronRight,
   Clock3,
+  ExternalLink,
+  Info,
+  LayoutDashboard,
   MoreHorizontal,
+  OctagonAlert,
   Pause,
   Play,
   Plus,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
   TrendingDown,
+  Users,
   Wallet,
   Zap,
 } from "lucide-react"
@@ -41,12 +52,9 @@ import {
 import {
   formatDuration,
   formatEth,
-  formatRate,
-  formatTimeline,
   formatWeiRatePerDay,
   usePayrollAdminData,
   type AdminWorkerRecord,
-  type PayrollTimeline,
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
@@ -54,30 +62,25 @@ import { getPayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
-import { SidebarNav } from "@/components/dashboard/sidebar-nav"
+import AdminLayout from "@/app/dashboard/admin-layout-shell"
+import { AdminPageHeader } from "./admin-page-header"
+import { WorkersView } from "./admin-workers/workers-view"
+import { ProposalsView } from "./admin-proposals/proposals-view"
 
 type AdminSectionId = "overview" | "workers" | "proposals" | "treasury" | "admins"
 
 export const SIDEBAR_SECTIONS: Array<{
   id: AdminSectionId
   label: string
-  eyebrow: string
   description: string
+  icon: any
 }> = [
-  { id: "overview", label: "Overview", eyebrow: "Command", description: "Treasury health, headcount, and urgent operator tasks." },
-  { id: "workers", label: "Workers", eyebrow: "Roster", description: "Add workers, adjust terms, and manage active status." },
-  { id: "proposals", label: "Proposals", eyebrow: "Review Queue", description: "Track pending term changes that pause accrual until resolved." },
-  { id: "treasury", label: "Treasury", eyebrow: "Capital", description: "Fund payroll, monitor runway, and manage safe withdrawals." },
-  { id: "admins", label: "Admins", eyebrow: "Permissions", description: "Owner and operator access controls for the protocol." },
+  { id: "overview", label: "Overview", description: "Treasury health, headcount, and urgent operator tasks.", icon: LayoutDashboard },
+  { id: "workers", label: "Workers", description: "Add workers, adjust terms, and manage active status.", icon: Users },
+  { id: "proposals", label: "Proposals", description: "Track pending term changes that pause accrual until resolved.", icon: Clock3 },
+  { id: "treasury", label: "Treasury", description: "Fund payroll, monitor runway, and manage safe withdrawals.", icon: Wallet },
+  { id: "admins", label: "Admins", description: "Owner and operator access controls for the protocol.", icon: Shield },
 ]
-
-const TIMELINE_OPTIONS = [
-  { label: "Hourly", value: "0" },
-  { label: "Monthly", value: "1" },
-  { label: "Custom Interval", value: "2" },
-  { label: "Trigger-based", value: "3" },
-] as const
 
 function parseEthOrThrow(value: string, label: string) {
   if (!value.trim()) throw new Error(`${label} is required.`)
@@ -95,6 +98,114 @@ function humanExpiry(expiryTimestamp: bigint) {
   return `in ${formatDuration(expiryTimestamp - now)}`
 }
 
+function formatRunway(seconds: bigint) {
+  if (seconds === 0n) return "0s"
+  if (seconds === 2n ** 256n - 1n) return "∞"
+
+  const day = 86_400n
+  const hour = 3_600n
+  const minute = 60n
+
+  if (seconds > day * 2n) {
+    return `${seconds / day} days`
+  }
+  
+  if (seconds > hour * 1n) {
+    const h = seconds / hour
+    const m = (seconds % hour) / minute
+    return `${h}h ${m}m`
+  }
+  
+  return (
+    <span className="animate-pulse text-destructive font-bold">
+      {seconds / minute} minutes
+    </span>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  subLabel,
+  variant = "neutral",
+}: {
+  label: string
+  value: string | React.ReactNode
+  subLabel: string
+  variant?: "neutral" | "success" | "warning" | "danger"
+}) {
+  const borderClass = {
+    neutral: "border-border/50",
+    success: "border-l-4 border-l-emerald-500",
+    warning: "border-l-4 border-l-amber-500",
+    danger: "border-l-4 border-l-destructive",
+  }[variant]
+
+  return (
+    <Card className={cn("overflow-hidden shadow-sm transition-all hover:shadow-md", borderClass)}>
+      <CardHeader className="pb-2 pt-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <p className="text-sm text-muted-foreground/80 leading-tight">{subLabel}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function AlertRow({
+  title,
+  subText,
+  variant = "warning",
+  icon: Icon,
+  action,
+}: {
+  title: string
+  subText?: string | React.ReactNode
+  variant?: "success" | "warning" | "danger" | "info"
+  icon: any
+  action?: React.ReactNode
+}) {
+  const styles = {
+    success: "border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400",
+    warning: "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-400",
+    danger: "border-destructive/20 bg-destructive/5 text-destructive",
+    info: "border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-400",
+  }[variant]
+
+  const IconColor = {
+    success: "text-emerald-500",
+    warning: "text-amber-500",
+    danger: "text-destructive",
+    info: "text-blue-500",
+  }[variant]
+
+  return (
+    <div className={cn("flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between transition-all", styles)}>
+      <div className="flex gap-4">
+        <div className="mt-0.5 shrink-0">
+          <Icon className={cn("h-6 w-6", IconColor)} />
+        </div>
+        <div>
+          <p className="text-base font-bold leading-tight">{title}</p>
+          {subText && <div className="mt-2 text-sm opacity-90 leading-relaxed font-medium">{subText}</div>}
+        </div>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  )
+}
+
+function QuickStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card/50 px-4 py-3 shadow-sm transition-all hover:bg-muted/30">
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
+    </div>
+  )
+}
+
 function StatCard({
   title,
   value,
@@ -107,13 +218,13 @@ function StatCard({
   danger?: boolean
 }) {
   return (
-    <Card className={cn(danger && "border-destructive/40 bg-destructive/5")}>
+    <Card className={cn(danger && "border-destructive/40 bg-destructive/5 shadow-sm")}>
       <CardHeader className="pb-2">
-        <CardDescription>{title}</CardDescription>
-        <CardTitle className="text-2xl font-semibold tracking-tight">{value}</CardTitle>
+        <CardDescription className="text-xs font-medium uppercase tracking-wider">{title}</CardDescription>
+        <CardTitle className="text-2xl font-bold tracking-tight">{value}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">{hint}</p>
+        <p className="text-xs text-muted-foreground/80 leading-tight">{hint}</p>
       </CardContent>
     </Card>
   )
@@ -124,20 +235,13 @@ export function AdminDashboard() {
   const { address: connectedAddress } = useAccount()
   const { contractAddress, chainId, isConfigured, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollAdminData()
-  const [section, setSection] = useState<AdminSectionId>("overview")
+  
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const section = (searchParams.get("section") as AdminSectionId) || "overview"
 
   const [isFundingOpen, setIsFundingOpen] = useState(false)
   const [fundAmount, setFundAmount] = useState("")
-
-  const [isAddWorkerOpen, setIsAddWorkerOpen] = useState(false)
-  const [newWorkerAddress, setNewWorkerAddress] = useState("")
-  const [newWorkerTimeline, setNewWorkerTimeline] = useState("0")
-  const [newWorkerAmount, setNewWorkerAmount] = useState("")
-  const [newWorkerIntervalSeconds, setNewWorkerIntervalSeconds] = useState("")
-  const [newWorkerMetadata, setNewWorkerMetadata] = useState("")
-
-  const [triggerWorker, setTriggerWorker] = useState<Address | null>(null)
-  const [triggerAmount, setTriggerAmount] = useState("")
 
   const [withdrawRecipient, setWithdrawRecipient] = useState("")
   const [withdrawAmount, setWithdrawAmount] = useState("")
@@ -151,7 +255,6 @@ export function AdminDashboard() {
 
   const selectedSection = SIDEBAR_SECTIONS.find((item) => item.id === section) ?? SIDEBAR_SECTIONS[0]
   const workers = data?.workers ?? []
-  const activeWorkers = workers.filter((worker) => worker.status === "active")
   const pendingProposals = workers.filter((worker) => worker.pendingProposal)
   const owner = data?.owner
   const isOwner = !!owner && !!connectedAddress && getAddress(owner) === getAddress(connectedAddress)
@@ -185,445 +288,269 @@ export function AdminDashboard() {
     }
   }
 
-  if (!isConfigured) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-        Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable the admin dashboard.
-      </div>
-    )
+  const navigateToSection = (id: AdminSectionId) => {
+    router.push(`/dashboard/admin?section=${id}`)
   }
 
-  const { isConnected } = useAccount()
-  if (!isConnected && !isDevMode) {
-    return (
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Shield className="h-8 w-8" />
-        </div>
-        <h2 className="mt-6 text-xl font-semibold text-foreground">Connect Admin Wallet</h2>
-        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Connect an authorized operator or owner wallet to manage workers, treasury, and permissions.
-        </p>
-        <div className="mt-8">
-          <ConnectButton />
-        </div>
-      </div>
-    )
-  }
+  const renderOverview = () => {
+    const totalWorkersCount = workers.length
+    const activeTimeBasedWorkers = workers.filter((w) => w.status === "active" && w.timeline !== "Trigger").length
+    const triggerWorkersCount = workers.filter((w) => w.timeline === "Trigger").length
+    const pendingMigrationsCount = workers.filter((w) => w.pendingMigration).length
+    const expiringProposals = pendingProposals.filter((w) => {
+      const now = BigInt(Math.floor(Date.now() / 1000))
+      return w.pendingProposal!.expiryTimestamp - now < 86400n
+    })
+    const highStakesProposals = pendingProposals.filter((w) => w.pendingProposal!.terminateOnReject)
+    const lowRunwayWorkers = workers.filter((w) => w.runwaySeconds < lowTreasuryThresholdSeconds)
+    
+    const runwayVariant = runwaySeconds > 86400n * 30n ? "success" : runwaySeconds > 86400n * 7n ? "warning" : "danger"
 
-  if (isLoading) {
-    return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-        Loading payroll state from chain…
-      </div>
-    )
-  }
+    const alerts = []
 
-  if (isError || !data) {
-    return (
-      <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : "Failed to load payroll state."}
-        </p>
-        <Button variant="outline" onClick={() => void refetch()}>
-          Retry
-        </Button>
-      </div>
-    )
-  }
-
-  const priorityCards = [
-    {
-      title: "Runway Watch",
-      value: formatDuration(runwaySeconds),
-      hint: "Treasury and runway update from live onchain reads and contract event subscriptions.",
-      icon: TrendingDown,
-      target: "treasury" as const,
-    },
-    {
-      title: "Paused By Proposal",
-      value: `${pendingProposals.length} workers`,
-      hint: "Pending terms pause accrual until the worker accepts, rejects, or the proposal expires.",
-      icon: Clock3,
-      target: "proposals" as const,
-    },
-    {
-      title: "Access Surface",
-      value: `${data.admins.length + 1} privileged wallets`,
-      hint: "Owner and enabled admins are indexed from OwnerTransferred and AdminUpdated events.",
-      icon: Shield,
-      target: "admins" as const,
-    },
-  ]
-
-  const renderOverview = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Treasury Balance"
-          value={`${formatEth(treasuryBalanceWei)} ETH`}
-          hint={`Current payroll drain is ${formatWeiRatePerDay(totalRatePerSecondWei)}.`}
-          danger={isLowTreasury}
-        />
-        <StatCard
-          title="Runway"
-          value={formatDuration(runwaySeconds)}
-          hint={`Low treasury threshold is ${formatDuration(lowTreasuryThresholdSeconds)}.`}
-        />
-        <StatCard
-          title="Active Workers"
-          value={`${activeWorkers.length}`}
-          hint={`${workers.length} worker records currently indexed from contract events.`}
-        />
-        <StatCard
-          title="Pending Proposals"
-          value={`${pendingProposals.length}`}
-          hint="Pending proposals are read directly from the contract mapping per worker."
-        />
-      </div>
-
-      <div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Priority Queue</CardTitle>
-            <CardDescription>Use this as the operator start screen instead of chasing isolated contract methods.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {priorityCards.map((item) => {
-              const Icon = item.icon
-              return (
-                <button
-                  key={item.title}
-                  type="button"
-                  onClick={() => setSection(item.target)}
-                  className="flex w-full items-start justify-between rounded-2xl border border-border/70 bg-card px-4 py-4 text-left transition hover:border-primary/40 hover:bg-muted/40"
-                >
-                  <div className="flex gap-3">
-                    <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item.title}</p>
-                      <p className="mt-1 text-lg font-semibold tracking-tight text-foreground">{item.value}</p>
-                      <p className="mt-1 text-sm text-muted-foreground">{item.hint}</p>
-                    </div>
-                  </div>
-                  <MoreHorizontal className="mt-1 h-4 w-4 text-muted-foreground" />
-                </button>
-              )
-            })}
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
-
-  const renderWorkers = () => (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 rounded-3xl border border-border/70 bg-card p-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm font-medium text-foreground">Worker operations</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            The roster is built from `WorkerAdded` and `MigrationCompleted` events, then hydrated with live worker state.
-          </p>
-        </div>
-        <Dialog open={isAddWorkerOpen} onOpenChange={setIsAddWorkerOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 rounded-xl">
-              <Plus className="h-4 w-4" />
-              Add Worker
+    if (runwaySeconds < 86400n * 7n && treasuryBalanceWei > 0n) {
+      alerts.push(
+        <AlertRow
+          key="critical-treasury"
+          title="Treasury is low"
+          subText={`Current runway is only ${formatDuration(runwaySeconds)} — fund immediately.`}
+          variant="danger"
+          icon={ShieldAlert}
+          action={
+            <Button size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => {
+              navigateToSection("treasury")
+              setIsFundingOpen(true)
+            }}>
+              Fund Treasury
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Add Worker</DialogTitle>
-              <DialogDescription>Register a new worker payroll profile under operator control.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Wallet Address</label>
-                <Input value={newWorkerAddress} onChange={(event) => setNewWorkerAddress(event.target.value)} placeholder="0x..." className="font-mono" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Timeline</label>
-                <Select value={newWorkerTimeline} onValueChange={setNewWorkerTimeline}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timeline" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMELINE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Amount per Interval (ETH)</label>
-                <Input value={newWorkerAmount} onChange={(event) => setNewWorkerAmount(event.target.value)} type="number" placeholder="0.0" className="font-mono" />
-              </div>
-              {newWorkerTimeline === "2" ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Custom Interval Seconds</label>
-                  <Input
-                    value={newWorkerIntervalSeconds}
-                    onChange={(event) => setNewWorkerIntervalSeconds(event.target.value)}
-                    type="number"
-                    placeholder="43200"
-                    className="font-mono"
-                  />
-                </div>
-              ) : null}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Metadata</label>
-                <Input value={newWorkerMetadata} onChange={(event) => setNewWorkerMetadata(event.target.value)} placeholder="Alice Chen | Engineering" />
-              </div>
-              <Button
-                className="w-full"
-                disabled={isWalletPending}
-                onClick={() =>
-                  void executeWrite("Add worker", async () => {
-                    const workerAddr = toAddressOrThrow(newWorkerAddress, "Worker address")
-                    const timeline = Number(newWorkerTimeline)
-                    const amountPerIntervalWei = timeline === 3 ? 0n : parseEthOrThrow(newWorkerAmount, "Amount per interval")
-                    const customIntervalSeconds = timeline === 2 ? BigInt(newWorkerIntervalSeconds || "0") : 0n
+          }
+        />
+      )
+    }
 
-                    return writeContractAsync({
-                      ...contract,
-                      functionName: "addWorker",
-                      args: [workerAddr, timeline, amountPerIntervalWei, customIntervalSeconds, newWorkerMetadata.trim()],
-                    })
-                  }, () => {
-                    setIsAddWorkerOpen(false)
-                    setNewWorkerAddress("")
-                    setNewWorkerTimeline("0")
-                    setNewWorkerAmount("")
-                    setNewWorkerIntervalSeconds("")
-                    setNewWorkerMetadata("")
-                  })
-                }
-              >
-                Create Worker Record
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+    if (treasuryBalanceWei === 0n) {
+      alerts.push(
+        <AlertRow
+          key="empty-treasury"
+          title="Treasury is empty"
+          subText="All worker accrual is unfunded and claims cannot be processed."
+          variant="danger"
+          icon={OctagonAlert}
+          action={
+            <Button size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => {
+              navigateToSection("treasury")
+              setIsFundingOpen(true)
+            }}>
+              Fund Now
+            </Button>
+          }
+        />
+      )
+    }
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Roster</CardTitle>
-          <CardDescription>Primary row actions are wired to the payroll contract.</CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[820px]">
-            <thead>
-              <tr className="border-b border-border text-left">
-                <th className="pb-3 font-medium text-muted-foreground">Worker</th>
-                <th className="pb-3 font-medium text-muted-foreground">Timeline</th>
-                <th className="pb-3 font-medium text-muted-foreground">Rate</th>
-                <th className="pb-3 font-medium text-muted-foreground">Claimable</th>
-                <th className="pb-3 font-medium text-muted-foreground">Status</th>
-                <th className="pb-3 font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {workers.map((worker) => (
-                <tr key={worker.address} className="border-b border-border last:border-0">
-                  <td className="py-4">
-                    <div>
-                      <p className="font-medium text-foreground">{worker.name}</p>
-                      <p className="text-sm text-muted-foreground">{worker.role}</p>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">{worker.address}</p>
-                    </div>
-                  </td>
-                  <td className="py-4">{formatTimeline(worker)}</td>
-                  <td className="py-4 font-mono text-sm">{formatRate(worker)}</td>
-                  <td className="py-4 font-mono">{formatEth(worker.claimableWei)} ETH</td>
-                  <td className="py-4">
-                    <Badge variant={worker.status === "active" ? "default" : "secondary"} className="rounded-full px-2.5 py-1">
-                      {worker.status === "active" ? "Active" : "Paused"}
-                    </Badge>
-                  </td>
-                  <td className="py-4">
-                    <div className="flex flex-wrap gap-2">
-                      {worker.timeline === "Trigger" ? (
-                        <Dialog
-                          open={triggerWorker === worker.address}
-                          onOpenChange={(open) => {
-                            setTriggerWorker(open ? worker.address : null)
-                            if (!open) setTriggerAmount("")
-                          }}
-                        >
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="gap-1.5 rounded-xl">
-                              <Zap className="h-3.5 w-3.5" />
-                              Grant Trigger
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Grant Trigger Payment</DialogTitle>
-                              <DialogDescription>Grant a one-time payment to {worker.name}.</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 pt-4">
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Amount (ETH)</label>
-                                <Input value={triggerAmount} onChange={(event) => setTriggerAmount(event.target.value)} type="number" placeholder="0.0" className="font-mono" />
-                              </div>
-                              <Button
-                                className="w-full"
-                                disabled={isWalletPending}
-                                onClick={() =>
-                                  void executeWrite("Grant trigger payment", async () => {
-                                    const amountWei = parseEthOrThrow(triggerAmount, "Trigger amount")
-                                    return writeContractAsync({
-                                      ...contract,
-                                      functionName: "grantTriggerPayment",
-                                      args: [worker.address, amountWei],
-                                    })
-                                  }, () => {
-                                    setTriggerWorker(null)
-                                    setTriggerAmount("")
-                                  })
-                                }
-                              >
-                                Grant Payment
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      ) : null}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
-                        disabled={isWalletPending}
-                        onClick={() =>
-                          void executeWrite(worker.status === "active" ? "Pause worker" : "Activate worker", async () =>
-                            writeContractAsync({
-                              ...contract,
-                              functionName: "setWorkerStatus",
-                              args: [worker.address, worker.status !== "active"],
-                            }),
-                          )
-                        }
-                      >
-                        {worker.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                      {worker.pendingProposal ? (
-                        <Badge variant="secondary" className="rounded-full">
-                          Pending proposal
-                        </Badge>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
+    if (expiringProposals.length > 0) {
+      alerts.push(
+        <AlertRow
+          key="expiring-proposals"
+          title={`${expiringProposals.length} proposal(s) expiring within 24 hours`}
+          variant="danger"
+          icon={Clock3}
+          subText={
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {expiringProposals.map(w => (
+                <span key={w.address} className="font-mono">
+                  {w.address.slice(0, 6)}...{w.address.slice(-4)} ({humanExpiry(w.pendingProposal!.expiryTimestamp)})
+                </span>
               ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-    </div>
-  )
+            </div>
+          }
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("proposals")}>
+              Review
+            </Button>
+          }
+        />
+      )
+    }
 
-  const renderProposals = () => (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          title="Pending proposals"
-          value={`${pendingProposals.length}`}
-          hint="Each pending proposal pauses worker accrual."
+    if (highStakesProposals.length > 0) {
+      alerts.push(
+        <AlertRow
+          key="high-stakes-proposals"
+          title={`${highStakesProposals.length} proposal(s) will terminate worker on rejection`}
+          variant="warning"
+          icon={AlertTriangle}
+          subText={
+            <div className="flex flex-wrap gap-2">
+              {highStakesProposals.map(w => (
+                <span key={w.address} className="font-mono">{w.address.slice(0, 6)}...{w.address.slice(-4)}</span>
+              ))}
+            </div>
+          }
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("proposals")}>
+              Review
+            </Button>
+          }
         />
-        <StatCard
-          title="Termination on reject"
-          value={`${pendingProposals.filter((item) => item.pendingProposal?.terminateOnReject).length}`}
-          hint="These can terminate the worker on rejection or expiry."
+      )
+    }
+
+    const generalProposals = pendingProposals.filter(p => !expiringProposals.includes(p) && !highStakesProposals.includes(p))
+    if (generalProposals.length > 0) {
+      alerts.push(
+        <AlertRow
+          key="general-proposals"
+          title={`${generalProposals.length} workers have pending term proposals awaiting response`}
+          variant="warning"
+          icon={Clock3}
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("proposals")}>
+              Review
+            </Button>
+          }
         />
-        <StatCard
-          title="Review window"
-          value={formatDuration(data.defaultProposalWindowSeconds)}
-          hint="Current default proposal window from the contract."
+      )
+    }
+
+    const pausedByProposal = workers.filter(w => w.status === "paused" && w.pendingProposal)
+    if (pausedByProposal.length > 0) {
+      alerts.push(
+        <AlertRow
+          key="paused-by-proposal"
+          title={`${pausedByProposal.length} workers are paused — accrual halted until proposal resolves`}
+          variant="warning"
+          icon={Pause}
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("proposals")}>
+              View Workers
+            </Button>
+          }
         />
+      )
+    }
+
+    if (lowRunwayWorkers.length > 0) {
+      alerts.push(
+        <AlertRow
+          key="low-runway-workers"
+          title={`${lowRunwayWorkers.length} workers have individual runway below threshold`}
+          variant="warning"
+          icon={TrendingDown}
+          subText={
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {lowRunwayWorkers.map(w => (
+                <span key={w.address} className="font-mono">
+                  {w.address.slice(0, 6)}...{w.address.slice(-4)} ({formatDuration(w.runwaySeconds)})
+                </span>
+              ))}
+            </div>
+          }
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("workers")}>
+              Manage
+            </Button>
+          }
+        />
+      )
+    }
+
+    if (pendingMigrationsCount > 0) {
+      alerts.push(
+        <AlertRow
+          key="pending-migrations"
+          title={`${pendingMigrationsCount} worker address migration(s) awaiting acceptance`}
+          variant="info"
+          icon={Info}
+          action={
+            <Button variant="outline" size="sm" className="rounded-xl h-9 px-5 text-sm" onClick={() => navigateToSection("workers")}>
+              View Details
+            </Button>
+          }
+        />
+      )
+    }
+
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        {/* Section 2: Key Metrics */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <MetricCard
+            label="Treasury Balance"
+            value={`${formatEth(treasuryBalanceWei)} ETH`}
+            subLabel="Current prefunded treasury balance"
+          />
+          <MetricCard
+            label="Daily Burn Rate"
+            value={totalRatePerSecondWei > 0n ? `${formatEth(totalRatePerSecondWei * 86400n)} ETH / day` : <span className="text-muted-foreground/60">No active drain</span>}
+            subLabel="Aggregate drain across all active time-based workers"
+          />
+          <MetricCard
+            label="Runway"
+            value={activeTimeBasedWorkers > 0 ? formatRunway(runwaySeconds) : "—"}
+            subLabel={activeTimeBasedWorkers > 0 ? "Projected exhaustion at current burn" : "No active accrual"}
+            variant={activeTimeBasedWorkers > 0 ? runwayVariant : "neutral"}
+          />
+          <MetricCard
+            label="Workers"
+            value={
+              <div className="flex items-baseline gap-1.5">
+                <span>{activeTimeBasedWorkers} active</span>
+                <span className="text-sm font-medium text-muted-foreground">/ {totalWorkersCount} total</span>
+              </div>
+            }
+            subLabel={
+              <div className="space-y-1">
+                <p>Time-based accruing / all registered</p>
+                {triggerWorkersCount > 0 && (
+                  <p className="text-[10px] opacity-60 italic font-normal tracking-normal">{triggerWorkersCount} on trigger timeline</p>
+                )}
+              </div>
+            }
+          />
+          <MetricCard
+            label="Low Runway Workers"
+            value={`${lowRunwayWorkers.length} workers`}
+            subLabel={lowRunwayWorkers.length > 0 ? "Individual runway below threshold" : "All workers funded"}
+            variant={lowRunwayWorkers.length > 0 ? "danger" : "success"}
+          />
+        </div>
+
+        {/* Section 3: Needs Attention */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-1">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Needs Attention</h2>
+            <div className="h-px flex-1 bg-border/40" />
+          </div>
+          <div className="space-y-3">
+            {alerts.length > 0 ? (
+              alerts
+            ) : (
+              <AlertRow
+                title="Everything looks good — no urgent actions."
+                variant="success"
+                icon={CheckCircle2}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Section 4: Quick Stats */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 px-1">
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quick Stats</h2>
+            <div className="h-px flex-1 bg-border/40" />
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <QuickStat label="Total Workers" value={totalWorkersCount} />
+            <QuickStat label="Pending Proposals" value={pendingProposals.length} />
+            <QuickStat label="Pending Migrations" value={pendingMigrationsCount} />
+            <QuickStat label="Lifetime Paid" value={`${formatEth(data.lifetimePaidWei, 2)} ETH`} />
+          </div>
+        </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Proposal queue</CardTitle>
-          <CardDescription>These are live reads from `pendingTerms(worker)` across the indexed worker set.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {pendingProposals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No pending proposals.</p>
-          ) : (
-            pendingProposals.map((worker) => {
-              const proposal = worker.pendingProposal!
-              return (
-                <div
-                  key={worker.address}
-                  className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card px-4 py-4 md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-foreground">{worker.name}</p>
-                      {proposal.terminateOnReject ? (
-                        <Badge variant="destructive" className="rounded-full">Terminate on reject</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="rounded-full">Resume on reject</Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {formatRate({
-                        timeline: proposal.timeline,
-                        amountPerIntervalWei: proposal.amountPerIntervalWei,
-                        intervalSeconds: proposal.intervalSeconds,
-                      })}
-                    </p>
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">{worker.address}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="rounded-full">Expires {humanExpiry(proposal.expiryTimestamp)}</Badge>
-                    <Button
-                      variant="outline"
-                      className="rounded-xl"
-                      disabled={isWalletPending}
-                      onClick={() =>
-                        void executeWrite("Cancel proposal", async () =>
-                          writeContractAsync({
-                            ...contract,
-                            functionName: "cancelProposal",
-                            args: [worker.address],
-                          }),
-                        )
-                      }
-                    >
-                      Cancel Proposal
-                    </Button>
-                    <Button
-                      className="rounded-xl"
-                      disabled={isWalletPending}
-                      onClick={() =>
-                        void executeWrite("Expire proposal", async () =>
-                          writeContractAsync({
-                            ...contract,
-                            functionName: "expireProposal",
-                            args: [worker.address],
-                          }),
-                        )
-                      }
-                    >
-                      Expire If Eligible
-                    </Button>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
+    )
+  }
 
   const renderTreasury = () => (
     <div className="space-y-6">
@@ -853,79 +780,98 @@ export function AdminDashboard() {
     </div>
   )
 
-  return (
-    <SidebarProvider>
-      <div className="mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
-        <Sidebar collapsible="offcanvas" className="xl:sticky xl:top-24 xl:self-start">
-          <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card">
-            <SidebarHeader className="border-b border-border/70 px-5 py-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <BriefcaseBusiness className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Live payroll operations backed by onchain reads, writes, and event subscriptions.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Badge className="rounded-full">Admin</Badge>
-                <Badge variant="secondary" className="rounded-full">
-                  {isOwner ? "Owner" : "Operator"}
-                </Badge>
-              </div>
-            </SidebarHeader>
+  if (!isConfigured) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
+          Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable the admin dashboard.
+        </div>
+      </AdminLayout>
+    )
+  }
 
-            <SidebarNav 
-              section={section} 
-              setSection={setSection} 
-              items={SIDEBAR_SECTIONS}
-              highlightMap={{
-                proposals: pendingProposals.length > 0,
-                treasury: isLowTreasury
-              }}
-            />
+  if (!connectedAddress && !isDevMode) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Shield className="h-8 w-8" />
           </div>
-        </Sidebar>
+          <h2 className="mt-6 text-xl font-semibold text-foreground">Connect Admin Wallet</h2>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            Connect an authorized operator or owner wallet to manage workers, treasury, and permissions.
+          </p>
+          <div className="mt-8">
+            <ConnectButton />
+          </div>
+        </div>
+      </AdminLayout>
+    )
+  }
 
-        <main className="flex-1 min-w-0">
-          <section className="min-w-0 space-y-6">
-            <div className="rounded-[32px] border border-border/70 bg-card p-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    {selectedSection.eyebrow}
-                  </p>
-                  <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                    {selectedSection.label}
-                  </h1>
-                  <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Role Check</p>
-                  <p className="mt-1 text-sm text-foreground">
-                    Access is resolved from <span className="font-mono text-xs">owner()</span> and <span className="font-mono text-xs">admins(address)</span>.
-                  </p>
-                  <p className="mt-2 font-mono text-xs text-muted-foreground">
-                    {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
-                  </p>
-                  {receipt.isSuccess ? (
-                    <p className="mt-2 text-xs text-primary">Last transaction confirmed.</p>
-                  ) : null}
-                </div>
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
+          Loading payroll state from chain…
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  if (isError || !data) {
+    return (
+      <AdminLayout>
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
+          <p className="text-sm text-destructive">
+            {error instanceof Error ? error.message : "Failed to load payroll state."}
+          </p>
+          <Button variant="outline" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </div>
+      </AdminLayout>
+    )
+  }
+
+  return (
+    <AdminLayout>
+      <section className="min-w-0 space-y-6">
+        <div className={cn(
+          "rounded-[32px] border border-border/70 bg-card p-6",
+          section === "overview" && "flex items-center justify-center text-center"
+        )}>
+          {section === "overview" ? (
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {selectedSection.label}
+            </h1>
+          ) : (
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between w-full">
+              <div>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+                  {selectedSection.label}
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Protocol Context</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">
+                  {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
+                </p>
+                {receipt.isSuccess ? (
+                  <p className="mt-2 text-xs text-primary font-medium">Last transaction confirmed.</p>
+                ) : null}
               </div>
             </div>
+          )}
+        </div>
 
-            {section === "overview" ? renderOverview() : null}
-            {section === "workers" ? renderWorkers() : null}
-            {section === "proposals" ? renderProposals() : null}
-            {section === "treasury" ? renderTreasury() : null}
-            {section === "admins" ? renderAdmins() : null}
-          </section>
-        </main>
-      </div>
-    </SidebarProvider>
+        {section === "overview" ? renderOverview() : null}
+        {section === "workers" ? <WorkersView /> : null}
+        {section === "proposals" ? <ProposalsView /> : null}
+        {section === "treasury" ? renderTreasury() : null}
+        {section === "admins" ? renderAdmins() : null}
+      </section>
+    </AdminLayout>
   )
 }

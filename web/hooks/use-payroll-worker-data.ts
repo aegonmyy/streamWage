@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi"
 import { decodeEventLog, getAddress, type Address } from "viem"
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract"
+import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
 import {
   formatDuration,
   formatEth,
@@ -106,7 +106,7 @@ export function usePayrollWorkerData() {
       const worker = workerResult.result as WorkerResult
       const pendingTerms = pendingTermsResult.result as PendingTermsResult
       const pendingMigration = pendingMigrationResult.result as PendingMigrationResult
-      const logs = await publicClient.getLogs({
+      const logs = await getLogsInChunks(publicClient, {
         address: contract.address,
         fromBlock: contract.fromBlock,
         toBlock: "latest",

@@ -1,5 +1,5 @@
 import payrollArtifact from "@/lib/abi/StreamWagePayroll.json"
-import { getAddress, isAddress, type Abi } from "viem"
+import { getAddress, isAddress, type Abi, type PublicClient, type Log } from "viem"
 
 const DEFAULT_PAYROLL_CHAIN_ID = 31_337
 const DEFAULT_FROM_BLOCK = 0n
@@ -43,4 +43,38 @@ export function getPayrollContractConfig() {
         fromBlock: getPayrollFromBlock(),
       }
     : undefined
+}
+
+/**
+ * Fetches logs in chunks to avoid RPC "exceeded max allowed range" errors.
+ */
+export async function getLogsInChunks(
+  publicClient: PublicClient,
+  params: {
+    address: `0x${string}`
+    fromBlock: bigint
+    toBlock: bigint | "latest"
+  },
+  chunkSize: bigint = 10_000n
+): Promise<Log[]> {
+  const currentBlock = await publicClient.getBlockNumber()
+  const endBlock = params.toBlock === "latest" ? currentBlock : params.toBlock
+  const startBlock = params.fromBlock
+
+  if (startBlock > endBlock) return []
+
+  let allLogs: Log[] = []
+  for (let from = startBlock; from <= endBlock; from += chunkSize) {
+    const to = from + chunkSize - 1n > endBlock ? endBlock : from + chunkSize - 1n
+    
+    const logs = await publicClient.getLogs({
+      address: params.address,
+      fromBlock: from,
+      toBlock: to,
+    })
+    
+    allLogs = [...allLogs, ...logs]
+  }
+  
+  return allLogs
 }
