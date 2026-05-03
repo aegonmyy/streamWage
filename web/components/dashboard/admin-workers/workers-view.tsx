@@ -57,7 +57,13 @@ export function WorkersView() {
   const [formTerminateOnReject, setFormTerminateOnReject] = useState(false)
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash })
+
+  useEffect(() => {
+    if (receipt.isSuccess) {
+      refetch()
+    }
+  }, [receipt.isSuccess, refetch])
 
   // Data processing
   const workers = data?.workers ?? []
@@ -102,7 +108,6 @@ export function WorkersView() {
         description: getTransactionToastDescription(contract?.chainId, nextHash),
       })
       setActiveModal(null)
-      await refetch()
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Transaction failed."
       toast.error(actionLabel, { description: message })
@@ -454,6 +459,14 @@ export function WorkersView() {
             </div>
             <div className="flex flex-col gap-3">
               <Button variant="outline" className="h-11 rounded-xl" onClick={() => setActiveModal(null)}>Close</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+nClick={() => setActiveModal(null)}>Close</Button>
             </div>
           </div>
         </DialogContent>

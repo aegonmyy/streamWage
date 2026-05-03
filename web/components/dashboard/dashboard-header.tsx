@@ -1,7 +1,7 @@
 "use client"
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { CircleHelp, Shield, Zap, Wallet } from "lucide-react"
+import { Shield, Zap, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { cn } from "@/lib/utils"
@@ -18,7 +18,7 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
   const RoleIcon = roleIcon
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-card">
+    <header className="sticky top-0 z-50 hidden border-b border-border/60 bg-card md:block">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
@@ -32,19 +32,6 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
             <RoleIcon className="h-4 w-4" aria-hidden />
             <span className={cn(isConnected && !isLoading ? "text-foreground" : undefined)}>{roleLabel}</span>
           </div>
-
-          {view === "worker" ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-xl"
-              onClick={() => window.dispatchEvent(new CustomEvent("streamwage:open-worker-support"))}
-            >
-              <CircleHelp className="h-4 w-4" />
-              Help
-            </Button>
-          ) : null}
 
           <ConnectButton.Custom>
             {({

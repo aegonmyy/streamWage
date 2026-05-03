@@ -206,7 +206,13 @@ export function ProposalsView() {
   const [formReviewWindowDays, setFormReviewWindowDays] = useState("")
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash })
+
+  useEffect(() => {
+    if (receipt.isSuccess) {
+      refetch()
+    }
+  }, [receipt.isSuccess, refetch])
 
   const workers = data?.workers ?? []
   const allProposals = workers.filter(w => w.pendingProposal)
@@ -255,7 +261,6 @@ export function ProposalsView() {
         description: getTransactionToastDescription(contract?.chainId, nextHash),
       })
       setActiveModal(null)
-      await refetch()
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Transaction failed."
       toast.error(actionLabel, { description: message })

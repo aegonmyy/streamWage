@@ -1,135 +1,46 @@
+Looking at the screenshot, two clear issues:
 
-You are optimizing the **Worker Dashboard** of **StreamWage** for mobile. The current desktop layout is breaking on mobile screens. Apply the following changes:
+**
+Two fixes needed on the worker dashboard mobile view:
 
----
+**Fix 1 — Remove double navbar:**
+The desktop navbar is still rendering on mobile alongside the new mobile navbar. Find the layout file where the original navbar renders — likely `app/dashboard/layout.tsx` or a shared layout component. Add `hidden md:flex` to the desktop navbar so it only shows on screens 768px and above. The mobile navbar should only show below 768px using `flex md:hidden`. Do not touch desktop layout.
 
-### 1. Navigation — Replace sidebar with hamburger sheet
+**Fix 2 — Replace hamburger bottom sheet with floating nav pill:**
 
-Remove the left sidebar navigation entirely on mobile (below `768px`).
+Remove the current hamburger icon and bottom sheet implementation entirely.
 
-Replace with:
-- A **top bar** containing:
-  - StreamWage logo (left)
-  - `Help` button (center-left)
-  - Connected wallet address pill (right)
-  - Hamburger icon button (far right) — three lines icon
+Replace with a **floating navigation pill** that is:
+- `position: fixed`
+- `bottom: 32px`
+- `left: 50%` with `transform: translateX(-50%)` — centered horizontally
+- `z-index: 50`
+- Only visible on mobile (`flex md:hidden`)
 
-- When hamburger is tapped: slide up a **bottom sheet** (not a sidebar) from the bottom of the screen containing nav items:
-  - Overview
-  - Proposals
-  - Help
-  - Disconnect Wallet
-  
-- Bottom sheet should:
-  - Have a drag handle at the top
-  - Have a dark overlay behind it
-  - Close when overlay is tapped or an item is selected
-  - Animate up smoothly with `transition: transform 300ms ease`
+**Collapsed state** (default):
+- Circular button, `48px` diameter
+- Shows a menu icon (`☰`) centered
+- Background: dark (`#111`) with slight opacity
+- Subtle box shadow to float above content
+- `backdrop-filter: blur(8px)`
 
-Model this after how Vercel does it — clean list of nav items, no icons needed, just text with subtle separators.
+**Expanded state** (after tap):
+- Pill expands horizontally with smooth animation (`transition: all 250ms ease`)
+- Shows nav items inline: `Overview · Proposals · Help · Disconnect`
+- Each item is tappable text, `14px`, white
+- Separated by a dim `·` divider
+- Pill background: dark with blur
+- Tapping any item navigates and collapses pill back to icon
+- Tapping anywhere outside the pill collapses it
 
----
+**Animation:**
+- Expand: scale from center outward, `250ms ease`
+- Collapse: scale back to circle, `200ms ease`
+- Use `useState` for open/closed, `useEffect` to add outside click listener
 
-### 2. Top bar — compact and clean
+**Safe area:**
+- Add `padding-bottom: env(safe-area-inset-bottom)` so pill never overlaps iPhone home indicator
+- Adjust `bottom` value accordingly: `bottom: calc(32px + env(safe-area-inset-bottom))`
 
-```
-[⚡ Logo]  [Help]  [Worker badge]  [0x92...6c4B]  [☰]
-```
-
-- Height: `56px`
-- Logo: small, `32px`
-- Wallet pill: shortened address, tappable to copy full address
-- All items vertically centered
-- Sticky — stays at top when scrolling
-
----
-
-### 3. Cards — compact and scannable
-
-Current cards are too tall. Reduce padding and tighten spacing:
-
-- Card padding: `16px` instead of `24px`
-- Card margin between cards: `12px` instead of `24px`
-- Card border radius: `12px`
-- Font size for primary values: `28px` max (current feels like `40px+`)
-- Sub-labels: `12px`, muted color
-
-**Claimable card:**
-- Show value prominently but not gigantic
-- Add a `Claim` button directly inside the card — worker should not have to hunt for it
-- If worker is paused: disable the button and show "Paused — cannot claim"
-
-**Status card:**
-- Currently pink/red background for paused — keep this, it's good
-- But reduce height — it doesn't need that much vertical space
-- Show pending proposal indicator inline: "Proposal pending — tap to view"
-
-**Timeline card:**
-- `Custom (30s)` and `0.03 ETH / 30s` should be on the same line, not stacked
-
-**Latest TXNs section:**
-- Shorten hashes to `0xbd4c...27d7` format — already doing this ✅
-- But reduce font size to `11px` monospace
-- Show max 3 transactions, add "View all" link
-- Each txn row: hash on left, type badge on right (`terms proposed`, `claim`)
-
----
-
-### 4. Worker Runway card
-
-Currently shows `0s` in huge text with no context. Fix:
-- If runway is 0: show `No runway` in red with explanation "Treasury is empty or worker is paused"
-- If runway > 0: show human readable `Xd Xh` format
-- Add a small progress bar below showing runway relative to the low treasury threshold
-
----
-
-### 5. Page layout
-
-```
-[Sticky top bar — 56px]
-[Scrollable content]
-  [Overview header card]
-  [Claimable card + Claim button]
-  [Status card]
-  [Timeline card]
-  [Runway card]
-  [Proposals card — if any pending]
-[Bottom sheet — hidden until hamburger tapped]
-```
-
-- No horizontal scrolling anywhere
-- All cards `width: 100%` with `16px` horizontal padding on the page container
-- Page background: same light grey as desktop
-
----
-
-### 6. Proposals card — add to mobile view
-
-Currently not visible in mobile view at all. Add a card that shows:
-- If no proposals: don't render the card
-- If proposal pending:
-  - Card with yellow/orange tint
-  - Title: "Pending Proposal"
-  - Show proposed terms briefly: new timeline, new rate
-  - Show time remaining to respond
-  - Two buttons: `Accept` | `Reject`
-  - If `terminateOnReject = true`: show red warning text "Rejection will terminate your employment"
-
----
-
-### 7. Responsive breakpoints
-
-- Mobile: `< 768px` — hamburger nav, stacked cards, compact padding
-- Desktop: `>= 768px` — existing sidebar layout, existing card layout unchanged
-
-Use Tailwind's `md:` prefix to switch between layouts. Do not break the desktop view.
-
----
-
-### 8. Bottom safe area
-
-Add `padding-bottom: env(safe-area-inset-bottom)` to the page container so content is not hidden behind iPhone home bar.
-
----
+Only apply this on mobile. Desktop sidebar navigation remains completely unchanged.
 

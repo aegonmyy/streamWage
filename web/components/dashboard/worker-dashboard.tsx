@@ -2,7 +2,7 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import {
   AlertTriangle,
   ArrowRightLeft,
@@ -11,7 +11,6 @@ import {
   Check,
   Copy,
   ExternalLink,
-  HelpCircle,
   LogOut,
   Menu,
   Wallet,
@@ -120,12 +119,8 @@ function StatCard({
 
 function MobileTopBar({
   address,
-  onOpenNav,
-  onOpenHelp,
 }: {
   address?: string
-  onOpenNav: () => void
-  onOpenHelp: () => void
 }) {
   const [copied, setCopied] = useState(false)
 
@@ -142,15 +137,6 @@ function MobileTopBar({
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Zap className="h-5 w-5 fill-current" />
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1.5 px-2 text-muted-foreground"
-          onClick={onOpenHelp}
-        >
-          <HelpCircle className="h-4 w-4" />
-          <span className="text-xs font-medium">Help</span>
-        </Button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -168,85 +154,70 @@ function MobileTopBar({
             )}
           </Button>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={onOpenNav}
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
       </div>
     </div>
   )
 }
 
-function MobileNavSheet({
-  isOpen,
-  onClose,
+function FloatingNavPill({
   section,
   setSection,
 }: {
-  isOpen: boolean
-  onClose: () => void
   section: WorkerSectionId
   setSection: (s: WorkerSectionId) => void
 }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const { disconnect } = useDisconnect()
+  const pillRef = useRef<HTMLDivElement>(null)
 
-  const handleSelect = (s: WorkerSectionId) => {
-    setSection(s)
-    onClose()
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (pillRef.current && !pillRef.current.contains(event.target as Node)) {
+        setIsExpanded(false)
+      }
+    }
+
+    if (isExpanded) {
+      document.addEventListener("mousedown", handleClickOutside)
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isExpanded])
+
+  const handleAction = (action: () => void) => {
+    action()
+    setIsExpanded(false)
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="pb-8">
-        <div className="mx-auto mt-4 h-1.5 w-12 rounded-full bg-muted" />
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="text-lg">Navigation</DrawerTitle>
-          <DrawerDescription>Quick access to worker sections.</DrawerDescription>
-        </DrawerHeader>
-        <div className="mt-4 flex flex-col px-4">
-          {WORKER_SECTIONS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={cn(
-                "flex w-full items-center py-4 text-left text-base font-medium transition-colors border-b border-border/40 last:border-0",
-                section === item.id ? "text-primary" : "text-foreground/70",
-              )}
-              onClick={() => handleSelect(item.id)}
-            >
-              {item.label}
-              {section === item.id && <Check className="ml-auto h-4 w-4" />}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="flex w-full items-center py-4 text-left text-base font-medium text-foreground/70 border-b border-border/40"
-            onClick={() => {
-              setSection("support")
-              onClose()
-            }}
-          >
-            Help
-            {section === "support" && <Check className="ml-auto h-4 w-4" />}
-          </button>
-          <button
-            type="button"
-            className="flex w-full items-center py-4 text-left text-base font-medium text-destructive"
-            onClick={() => {
-              disconnect()
-              onClose()
-            }}
-          >
-            Disconnect Wallet
-            <LogOut className="ml-auto h-4 w-4" />
-          </button>
+    <div
+      ref={pillRef}
+      className={cn(
+        "fixed bottom-[calc(32px+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center justify-center overflow-hidden transition-all ease-in-out md:hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+        isExpanded
+          ? "h-12 w-[calc(100%-48px)] max-w-[380px] rounded-full bg-[#111]/90 px-6 backdrop-blur-[8px] duration-[250ms]"
+          : "h-12 w-12 rounded-full bg-[#111]/90 backdrop-blur-[8px] cursor-pointer duration-[200ms]"
+      )}
+      onClick={() => !isExpanded && setIsExpanded(true)}
+    >
+      {isExpanded ? (
+        <div className="flex w-full items-center justify-between text-[14px] font-medium text-white/90">
+          <button type="button" onClick={() => handleAction(() => setSection("overview"))} className="hover:text-white transition-colors">Overview</button>
+          <span className="text-white/20">·</span>
+          <button type="button" onClick={() => handleAction(() => setSection("proposals"))} className="hover:text-white transition-colors">Proposals</button>
+          <span className="text-white/20">·</span>
+          <button type="button" onClick={() => handleAction(() => setSection("support"))} className="hover:text-white transition-colors">Help</button>
+          <span className="text-white/20">·</span>
+          <button type="button" onClick={() => handleAction(() => disconnect())} className="text-red-400 hover:text-red-300 transition-colors">Disconnect</button>
         </div>
-      </DrawerContent>
-    </Drawer>
+      ) : (
+        <Menu className="h-5 w-5 text-white" />
+      )}
+    </div>
   )
 }
 
@@ -260,7 +231,6 @@ export function WorkerDashboard() {
   const [migrationAddress, setMigrationAddress] = useState("")
   const [migrationOldAddress, setMigrationOldAddress] = useState("")
   const [copied, setCopied] = useState(false)
-  const [isNavOpen, setIsNavOpen] = useState(false)
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
@@ -284,6 +254,12 @@ export function WorkerDashboard() {
     return () => window.removeEventListener("streamwage:open-worker-support", handler)
   }, [])
 
+  useEffect(() => {
+    if (receipt.isSuccess) {
+      refetch()
+    }
+  }, [receipt.isSuccess, refetch])
+
   async function executeWrite(
     actionLabel: string,
     callback: () => Promise<`0x${string}`>,
@@ -295,7 +271,6 @@ export function WorkerDashboard() {
         description: getTransactionToastDescription(contract?.chainId, nextHash),
       })
       onSuccess?.()
-      await refetch()
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Transaction failed."
       toast.error(actionLabel, { description: message })
@@ -1035,12 +1010,9 @@ export function WorkerDashboard() {
     <div className="flex flex-col min-h-screen">
       <MobileTopBar
         address={address}
-        onOpenNav={() => setIsNavOpen(true)}
-        onOpenHelp={() => setSection("support")}
       />
-      <MobileNavSheet
-        isOpen={isNavOpen}
-        onClose={() => setIsNavOpen(false)}
+
+      <FloatingNavPill
         section={section}
         setSection={setSection}
       />

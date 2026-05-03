@@ -270,6 +270,12 @@ export function AdminDashboard() {
     return data.treasuryBalanceWei > reserve ? data.treasuryBalanceWei - reserve : 0n
   }, [data])
 
+  useEffect(() => {
+    if (receipt.isSuccess) {
+      refetch()
+    }
+  }, [receipt.isSuccess, refetch])
+
   async function executeWrite(
     actionLabel: string,
     callback: () => Promise<`0x${string}`>,
@@ -281,7 +287,6 @@ export function AdminDashboard() {
         description: getTransactionToastDescription(contract?.chainId, nextHash),
       })
       onSuccess?.()
-      await refetch()
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "Transaction failed."
       toast.error(actionLabel, { description: message })
