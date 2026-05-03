@@ -299,13 +299,6 @@ export function AdminDashboard() {
   const [adminAddress, setAdminAddress] = useState("")
   const [ownershipAddress, setOwnershipAddress] = useState("")
 
-  const { data: emergencyPaused, refetch: refetchEmergencyPaused } = useReadContract({
-    address: contract?.address,
-    abi: contract?.abi,
-    functionName: 'emergencyPaused',
-    query: { refetchInterval: 10_000 }
-  })
-
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
@@ -329,9 +322,8 @@ export function AdminDashboard() {
   useEffect(() => {
     if (receipt.isSuccess) {
       refetch()
-      refetchEmergencyPaused()
     }
-  }, [receipt.isSuccess, refetch, refetchEmergencyPaused])
+  }, [receipt.isSuccess, refetch])
 
   async function executeWrite(
     actionLabel: string,
@@ -750,106 +742,6 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-destructive/30 bg-destructive/[0.02] overflow-hidden">
-        <CardHeader className="border-b border-destructive/10 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-destructive" />
-              <CardTitle className="text-destructive">Emergency Controls</CardTitle>
-            </div>
-            <Badge variant="destructive" className="rounded-full uppercase tracking-widest text-[10px]">Owner only</Badge>
-          </div>
-          <CardDescription className="text-destructive/70 font-medium">
-            These actions are irreversible. Use only in critical protocol failure.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 rounded-2xl bg-background border border-destructive/20 shadow-sm">
-            <div className="space-y-1">
-              <p className="font-bold text-foreground">Emergency Pause</p>
-              <p className="text-sm text-muted-foreground">Pauses all worker claims immediately.</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className={cn("text-xs font-bold uppercase tracking-widest", emergencyPaused ? "text-destructive" : "text-muted-foreground")}>
-                {emergencyPaused ? "Paused" : "Active"}
-              </span>
-              <Button
-                variant={emergencyPaused ? "default" : "destructive"}
-                size="sm"
-                className="rounded-xl font-bold px-6"
-                disabled={isWalletPending || !isOwner}
-                onClick={() =>
-                  void executeWrite(emergencyPaused ? "Resume protocol" : "Pause protocol", async () =>
-                    writeContractAsync({
-                      ...contract!,
-                      functionName: "setEmergencyPause",
-                      args: [!emergencyPaused],
-                    })
-                  )
-                }
-              >
-                {emergencyPaused ? "Resume Protocol" : "Pause Protocol"}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between p-5 rounded-2xl bg-background border border-destructive/20 shadow-sm">
-            <div className="space-y-1">
-              <p className="font-bold text-foreground">Emergency Drain</p>
-              <p className="text-sm text-muted-foreground">Send entire treasury balance to your wallet, bypassing all reserves.</p>
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="rounded-xl font-bold px-6 shadow-md"
-                  disabled={isWalletPending || !isOwner || treasuryBalanceWei === 0n}
-                >
-                  Drain Treasury →
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-[28px]">
-                <DialogHeader>
-                  <DialogTitle className="text-destructive flex items-center gap-2">
-                    <ShieldAlert className="h-5 w-5" />
-                    Confirm Emergency Drain
-                  </DialogTitle>
-                  <DialogDescription className="font-medium text-foreground/80 pt-2">
-                    This will send the entire treasury balance (<span className="font-bold text-destructive">{formatEth(treasuryBalanceWei)} ETH</span>) to your wallet (<span className="font-mono font-bold">{connectedAddress?.slice(0, 6)}...{connectedAddress?.slice(-4)}</span>).
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="bg-destructive/10 p-4 rounded-xl border border-destructive/20 mt-2">
-                  <p className="text-xs text-destructive font-bold leading-relaxed">
-                    WARNING: All worker claims will be unfunded. This action is irreversible.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-3 pt-4">
-                  <Button
-                    variant="destructive"
-                    className="h-11 rounded-xl font-bold shadow-lg"
-                    disabled={isWalletPending}
-                    onClick={() =>
-                      void executeWrite("Drain treasury", async () =>
-                        writeContractAsync({
-                          ...contract!,
-                          functionName: "emergencyDrain",
-                        })
-                      )
-                    }
-                  >
-                    Drain Treasury
-                  </Button>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="h-11 rounded-xl font-bold">Cancel</Button>
-                  </DialogTrigger>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 

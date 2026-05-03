@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { WorkerDashboard } from "@/components/dashboard/worker-dashboard"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
@@ -32,5 +32,16 @@ export default function WorkerDashboardPage() {
     )
   }
 
-  return <WorkerDashboard />
+  return (
+    <Suspense fallback={
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground font-medium">Loading worker dashboard...</p>
+        </div>
+      </div>
+    }>
+      <WorkerDashboard />
+    </Suspense>
+  )
 }

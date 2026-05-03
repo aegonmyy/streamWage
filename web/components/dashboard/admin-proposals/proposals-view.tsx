@@ -609,7 +609,7 @@ export function ProposalsView() {
 
         {/* Modals */}
         <Dialog open={activeModal === "propose"} onOpenChange={(open) => !open && setActiveModal(null)}>
-          <DialogContent className="max-w-md rounded-[28px]">
+          <DialogContent className="max-w-md rounded-[28px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Propose Terms</DialogTitle>
               <DialogDescription>

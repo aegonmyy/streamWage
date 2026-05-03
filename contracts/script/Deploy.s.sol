@@ -30,6 +30,7 @@ contract Deploy is Script {
         if (_eq(mode, "direct")) {
             StreamWagePayroll payroll = new StreamWagePayroll(initialOwner);
             console2.log("StreamWagePayroll deployed at:", address(payroll));
+            _addInitialWorker(payroll);
         } else if (_eq(mode, "factory_only")) {
             StreamWagePayrollFactory factory = new StreamWagePayrollFactory();
             console2.log("StreamWagePayrollFactory deployed at:", address(factory));
@@ -41,10 +42,29 @@ contract Deploy is Script {
             if (_eq(mode, "factory")) {
                 StreamWagePayroll payrollViaFactory = factory.deployPayroll(initialOwner);
                 console2.log("StreamWagePayroll (via factory) deployed at:", address(payrollViaFactory));
+                _addInitialWorker(payrollViaFactory);
             }
         }
 
         vm.stopBroadcast();
+    }
+
+    function _addInitialWorker(StreamWagePayroll payroll) internal {
+        address workerAddr = 0x92fAf43CbBEce86ab3f887B9dFef3a8604b16c4B;
+        uint256 amountPerIntervalWei = 0.0001 ether;
+        uint256 intervalSeconds = 60; // 1 minute
+
+        console2.log("Adding initial worker:", workerAddr);
+        payroll.addWorker(
+            workerAddr,
+            StreamWagePayroll.Timeline.Custom,
+            amountPerIntervalWei,
+            intervalSeconds,
+            "Initial worker"
+        );
+
+        console2.log("Funding payroll with 0.25 ETH");
+        payroll.fundTreasury{value: 0.25 ether}();
     }
 
     function _eq(

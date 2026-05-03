@@ -2,6 +2,7 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
+import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, useRef } from "react"
 import {
   AlertTriangle,
@@ -12,6 +13,7 @@ import {
   Clock3,
   Copy,
   ExternalLink,
+  HelpCircle,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -43,8 +45,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
-import { SidebarNav } from "@/components/dashboard/sidebar-nav"
+
+import WorkerLayout from "@/app/dashboard/worker-layout-shell"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import {
@@ -71,6 +73,7 @@ export const WORKER_SECTIONS: Array<{
   { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds, review totals, and understand how your timeline behaves.", icon: Wallet },
   { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Accept, reject, or expire proposed terms that pause your accrual.", icon: Clock3 },
   { id: "profile", label: "Profile", eyebrow: "Identity", description: "Wallet details, metadata, and migration tools for moving your worker record.", icon: User },
+  { id: "support", label: "Support", eyebrow: "Guide", description: "Plain-English help for timelines, pauses, migration, and treasury warnings.", icon: HelpCircle },
 ]
 
 function toAddressOrThrow(value: string, label: string): Address {
@@ -122,120 +125,23 @@ function StatCard({
   )
 }
 
-function MobileTopBar({
-  address,
-}: {
-  address?: string
-}) {
-  const [copied, setCopied] = useState(false)
-
-  const copyAddress = async () => {
-    if (!address) return
-    await navigator.clipboard.writeText(address)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="sticky top-0 z-40 flex md:hidden h-[56px] w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md">
-      <div className="flex items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Zap className="h-5 w-5 fill-current" />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {address && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 rounded-full bg-secondary/50 px-3 font-mono text-[11px] font-medium"
-            onClick={copyAddress}
-          >
-            {copied ? (
-              <Check className="h-3 w-3 text-primary" />
-            ) : (
-              shortAddress(address)
-            )}
-          </Button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function FloatingNavPill({
-  section,
-  setSection,
-}: {
-  section: WorkerSectionId
-  setSection: (s: WorkerSectionId) => void
-}) {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const { disconnect } = useDisconnect()
-  const pillRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (pillRef.current && !pillRef.current.contains(event.target as Node)) {
-        setIsExpanded(false)
-      }
-    }
-
-    if (isExpanded) {
-      document.addEventListener("mousedown", handleClickOutside)
-    } else {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [isExpanded])
-
-  const handleAction = (action: () => void) => {
-    action()
-    setIsExpanded(false)
-  }
-
-  return (
-    <div
-      ref={pillRef}
-      className={cn(
-        "fixed bottom-[calc(32px+env(safe-area-inset-bottom))] left-1/2 z-50 flex md:hidden -translate-x-1/2 items-center justify-center overflow-hidden transition-all ease-in-out shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
-        isExpanded
-          ? "h-12 w-[calc(100%-48px)] max-w-[380px] rounded-full bg-[#111]/90 px-6 backdrop-blur-[8px] duration-[250ms]"
-          : "h-12 w-12 rounded-full bg-[#111]/90 backdrop-blur-[8px] cursor-pointer duration-[200ms]"
-      )}
-      onClick={() => !isExpanded && setIsExpanded(true)}
-    >
-      {isExpanded ? (
-        <div className="flex w-full items-center justify-between text-[14px] font-medium text-white">
-          <button type="button" onClick={() => handleAction(() => setSection("overview"))} className="hover:text-white/80 transition-colors">Overview</button>
-          <span className="text-white/20">·</span>
-          <button type="button" onClick={() => handleAction(() => setSection("proposals"))} className="hover:text-white/80 transition-colors">Proposals</button>
-          <span className="text-white/20">·</span>
-          <button type="button" onClick={() => handleAction(() => setSection("support"))} className="hover:text-white/80 transition-colors">Help</button>
-          <span className="text-white/20">·</span>
-          <button type="button" onClick={() => handleAction(() => disconnect())} className="text-red-400 hover:text-red-300 transition-colors">Disconnect</button>
-        </div>
-      ) : (
-        <Menu className="h-5 w-5 text-white" />
-      )}
-    </div>
-  )
-}
-
 export function WorkerDashboard() {
   const contract = getPayrollContractConfig()
   const { address, isConnected } = useAccount()
   const { isConfigured, contractAddress, chainId, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollWorkerData()
-  const [section, setSection] = useState<WorkerSectionId>("overview")
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const section = (searchParams.get("section") as WorkerSectionId) || "overview"
+
   const [claimToAddress, setClaimToAddress] = useState("")
   const [migrationAddress, setMigrationAddress] = useState("")
   const [migrationOldAddress, setMigrationOldAddress] = useState("")
   const [copied, setCopied] = useState(false)
+
+  const navigateToSection = (id: WorkerSectionId) => {
+    router.push(`/dashboard/worker?section=${id}`)
+  }
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
@@ -243,13 +149,6 @@ export function WorkerDashboard() {
   const { data: treasuryBalance, refetch: refetchTreasury } = useBalance({
     address: contract?.address,
     query: { refetchInterval: 30_000 }
-  })
-
-  const { data: emergencyPaused, refetch: refetchEmergencyPaused } = useReadContract({
-    address: contract?.address,
-    abi: contract?.abi,
-    functionName: 'emergencyPaused',
-    query: { refetchInterval: 10_000 }
   })
 
   const theoreticalWei = data?.claimableWei ?? 0n
@@ -273,16 +172,16 @@ export function WorkerDashboard() {
   )
 
   useEffect(() => {
-    const handler = () => setSection("support")
+    const handler = () => navigateToSection("support")
     window.addEventListener("streamwage:open-worker-support", handler)
     return () => window.removeEventListener("streamwage:open-worker-support", handler)
   }, [])
 
   useEffect(() => {
     if (receipt.isSuccess) {
-      Promise.all([refetch(), refetchTreasury(), refetchEmergencyPaused()])
+      Promise.all([refetch(), refetchTreasury()])
     }
-  }, [receipt.isSuccess, refetch, refetchTreasury, refetchEmergencyPaused])
+  }, [receipt.isSuccess, refetch, refetchTreasury])
 
   async function executeWrite(
     actionLabel: string,
@@ -310,69 +209,77 @@ export function WorkerDashboard() {
 
   if (!contract) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-        Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable worker reads.
-      </div>
+      <WorkerLayout>
+        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
+          Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable worker reads.
+        </div>
+      </WorkerLayout>
     )
   }
 
   if (!isConnected && !isDevMode) {
     return (
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          <Wallet className="h-8 w-8" />
+      <WorkerLayout>
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Wallet className="h-8 w-8" />
+          </div>
+          <h2 className="mt-6 text-xl font-semibold text-foreground">Connect your wallet</h2>
+          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+            Connect a wallet to view your worker earnings, pending proposals, and migration state.
+          </p>
+          <div className="mt-8">
+            <ConnectButton />
+          </div>
         </div>
-        <h2 className="mt-6 text-xl font-semibold text-foreground">Connect your wallet</h2>
-        <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-          Connect a wallet to view your worker earnings, pending proposals, and migration state.
-        </p>
-        <div className="mt-8">
-          <ConnectButton />
-        </div>
-      </div>
+      </WorkerLayout>
     )
   }
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-        Loading worker state from chain…
-      </div>
+      <WorkerLayout>
+        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
+          Loading worker state from chain…
+        </div>
+      </WorkerLayout>
     )
   }
 
   if (isError || !data) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-        <p className="text-sm text-destructive">
-          {error instanceof Error ? error.message : "Failed to load worker state."}
-        </p>
-        <Button variant="outline" onClick={() => void refetch()}>
-          Retry
-        </Button>
-      </div>
+      <WorkerLayout>
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
+          <p className="text-sm text-destructive">
+            {error instanceof Error ? error.message : "Failed to load worker state."}
+          </p>
+          <Button variant="outline" onClick={() => void refetch()}>
+            Retry
+          </Button>
+        </div>
+      </WorkerLayout>
     )
   }
 
   if (!data.exists) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-        <p className="text-sm text-muted-foreground">
-          This wallet is not registered as a worker in the payroll contract.
-        </p>
-        <p className="font-mono text-xs text-muted-foreground">
-          {isConfigured ? `Role source: ${contractAddress} on chain ${chainId}` : "Contract not configured"}
-        </p>
-      </div>
+      <WorkerLayout>
+        <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
+          <p className="text-sm text-muted-foreground">
+            This wallet is not registered as a worker in the payroll contract.
+          </p>
+          <p className="font-mono text-xs text-muted-foreground">
+            {isConfigured ? `Role source: ${contractAddress} on chain ${chainId}` : "Contract not configured"}
+          </p>
+        </div>
+      </WorkerLayout>
     )
   }
 
-  const isProposalUrgent = !!data.pendingProposal
-
   const renderOverview = () => (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {data.pendingProposal && (
-        <Card className="border-amber-200 bg-amber-50 md:hidden rounded-[12px]">
+        <Card className="border-amber-200 bg-amber-50 rounded-[12px]">
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-semibold flex items-center gap-2 text-amber-900">
@@ -435,7 +342,7 @@ export function WorkerDashboard() {
         </Card>
       )}
 
-      <div className="grid gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Claimable"
           value={`${formatEth(theoreticalWei)} ETH`}
@@ -459,7 +366,7 @@ export function WorkerDashboard() {
               </p>
             )}
           </div>
-          <div className="mt-3 md:hidden">
+          <div className="mt-3 sm:hidden">
             {emergencyPaused ? (
               <Button className="w-full h-9 text-xs rounded-xl bg-muted text-muted-foreground" disabled>
                 Protocol paused — claims disabled
@@ -490,26 +397,16 @@ export function WorkerDashboard() {
           value={data.active ? "Active" : "Paused"}
           hint={data.pendingProposal ? "Proposal pending — tap to view" : "No pending proposal."}
           danger={!data.active}
-          className="cursor-pointer md:cursor-default"
+          className="cursor-pointer sm:cursor-default"
           onClick={() => {
-            if (window.innerWidth < 768) setSection("proposals")
+            if (window.innerWidth < 768) navigateToSection("proposals")
           }}
         />
-
-        <div className="md:hidden">
-          <StatCard
-            title="Timeline & Rate"
-            value={`${formatTimeline(data)} · ${data.timeline === "Trigger" ? "Trigger" : formatRate(data)}`}
-            hint="Active compensation terms."
-            className="[&_h3]:text-[20px]"
-          />
-        </div>
 
         <StatCard
           title="Timeline"
           value={formatTimeline(data)}
           hint={data.timeline === "Trigger" ? "Trigger" : formatRate(data)}
-          className="hidden md:block"
         />
 
         <TooltipProvider>
@@ -523,7 +420,7 @@ export function WorkerDashboard() {
                   danger={data.runwaySeconds === 0n}
                 >
                   {data.runwaySeconds > 0n && (
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary md:hidden">
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                       <div
                         className={cn(
                           "h-full transition-all duration-500",
@@ -545,11 +442,11 @@ export function WorkerDashboard() {
         </TooltipProvider>
       </div>
 
-      <Card className="md:hidden">
+      <Card className="sm:hidden">
         <CardHeader className="p-4 pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold">Latest Transactions</CardTitle>
-            <Button variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => setSection("earnings")}>
+            <Button variant="link" size="sm" className="h-auto p-0 text-[11px]" onClick={() => navigateToSection("earnings")}>
               View all
             </Button>
           </div>
@@ -659,15 +556,15 @@ export function WorkerDashboard() {
   )
 
   const renderEarnings = () => (
-    <div className="space-y-4 md:space-y-6">
-      <div className="grid gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard title="Claimable now" value={`${formatEth(theoreticalWei)} ETH`} hint={isSolvent ? "Available to claim immediately." : `Treasury capped: ${formatEth(actualClaimableWei)} ETH`} danger={!isSolvent} />
         <StatCard title="Accrued checkpoint" value={`${formatEth(data.accruedWei)} ETH`} hint="Accrued onchain balance." />
         <StatCard title="Total claimed" value={`${formatEth(data.totalClaimedWei)} ETH`} hint="Lifetime claimed." />
         <StatCard title="Current rate" value={data.timeline === "Trigger" ? "Trigger" : formatRate(data)} hint="Active compensation timeline." />
       </div>
 
-      <div className="grid gap-3 md:gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2">
         <Card className="rounded-[12px] md:rounded-2xl overflow-hidden">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Claim earnings</CardTitle>
@@ -801,7 +698,7 @@ export function WorkerDashboard() {
   )
 
   const renderProposals = () => (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className={cn(data.pendingProposal && "border-warning/50 bg-warning/5", "rounded-[12px] md:rounded-2xl")}>
         <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
           <CardTitle className="text-base md:text-xl font-semibold">Pending terms</CardTitle>
@@ -814,7 +711,7 @@ export function WorkerDashboard() {
             <p className="text-xs text-muted-foreground">No pending proposal.</p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard title="Proposed timeline" value={data.pendingProposal.timeline} hint={formatDuration(data.pendingProposal.intervalSeconds)} />
                 <StatCard title="Proposed rate" value={data.pendingProposal.timeline === "Trigger" ? "Trigger" : `${formatEth(data.pendingProposal.amountPerIntervalWei)} ETH`} hint="Per proposed interval." />
                 <StatCard title="Expires" value={humanExpiry(data.pendingProposal.expiryTimestamp)} hint="Side may call expire." danger />
@@ -833,7 +730,7 @@ export function WorkerDashboard() {
               <div className="flex flex-wrap gap-2">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="flex-1 md:flex-none h-10 md:h-9 rounded-xl" disabled={isWalletPending}>Accept Terms</Button>
+                    <Button className="flex-1 sm:flex-none h-10 md:h-9 rounded-xl" disabled={isWalletPending}>Accept Terms</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -862,7 +759,7 @@ export function WorkerDashboard() {
                 </AlertDialog>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="flex-1 md:flex-none h-10 md:h-9 rounded-xl" disabled={isWalletPending}>Reject Terms</Button>
+                    <Button variant="outline" className="flex-1 sm:flex-none h-10 md:h-9 rounded-xl" disabled={isWalletPending}>Reject Terms</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -893,7 +790,7 @@ export function WorkerDashboard() {
                 </AlertDialog>
                 <Button
                   variant="outline"
-                  className="w-full md:w-auto h-10 md:h-9 rounded-xl"
+                  className="w-full sm:w-auto h-10 md:h-9 rounded-xl"
                   disabled={isWalletPending}
                   onClick={() =>
                     void executeWrite("Expire proposal", async () =>
@@ -916,7 +813,7 @@ export function WorkerDashboard() {
   )
 
   const renderProfile = () => (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Card className="rounded-[12px] md:rounded-2xl">
         <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
           <CardTitle className="text-base md:text-xl font-semibold">Worker profile</CardTitle>
@@ -945,7 +842,7 @@ export function WorkerDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 md:gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2">
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Propose migration</CardTitle>
@@ -1121,116 +1018,67 @@ export function WorkerDashboard() {
   )
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <MobileTopBar
-        address={address}
-      />
-
-      <FloatingNavPill
-        section={section}
-        setSection={setSection}
-      />
-
-      <SidebarProvider className="flex-1">
-        <div className="mx-auto flex w-full max-w-7xl gap-6 px-0 md:px-6 py-0 md:py-8">
-          <Sidebar collapsible="offcanvas" className="hidden md:flex md:sticky md:top-24 md:self-start">
-            <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card">
-              <SidebarHeader className="border-b border-border/70 px-5 py-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Wallet className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Worker Dashboard</p>
-                  </div>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Badge className="rounded-full">Worker</Badge>
-                  {data.pendingProposal ? (
-                    <Badge variant="destructive" className="rounded-full">Action required</Badge>
-                  ) : null}
-                  {section === "support" ? (
-                    <Badge variant="secondary" className="rounded-full">Help open</Badge>
-                  ) : null}
-                </div>
-              </SidebarHeader>
-              <SidebarNav
-                section={section}
-                setSection={setSection}
-                items={WORKER_SECTIONS}
-                highlightMap={{
-                  proposals: !!data.pendingProposal
-                }}
-              />
+    <WorkerLayout>
+      <section className="min-w-0 space-y-6">
+        <div className="rounded-[24px] md:rounded-[32px] border border-border/70 bg-card p-5 md:p-6 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                {selectedSection.eyebrow}
+              </p>
+              <h1 className="mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+                {selectedSection.label}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                {selectedSection.description}
+              </p>
             </div>
-          </Sidebar>
-
-          <main className="flex-1 min-w-0 px-4 md:px-0 pb-[env(safe-area-inset-bottom)] md:pb-0">
-            <section className="min-w-0 space-y-6 pt-6 md:pt-0">
-              <div className="rounded-[24px] md:rounded-[32px] border border-border/70 bg-card p-5 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                  <div>
-                    <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                      {section === "support" ? "Guide" : selectedSection.eyebrow}
-                    </p>
-                    <h1 className="mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                      {section === "support" ? "Support" : selectedSection.label}
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                      {section === "support"
-                        ? "Plain-English help for timelines, pauses, migration, and treasury warnings."
-                        : selectedSection.description}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 hidden md:block">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Latest Txns</p>
-                      {section === "support" ? (
-                        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setSection("overview")}>
-                          Back
-                        </Button>
-                      ) : null}
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {recentTransactions.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
-                      ) : (
-                        recentTransactions.map((item) =>
-                          item.explorerUrl ? (
-                            <Link
-                              key={item.id}
-                              href={item.explorerUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
-                            >
-                              {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
-                            </Link>
-                          ) : (
-                            <p key={item.id} className="font-mono text-xs text-muted-foreground">
-                              {shortAddress(item.txHash!)} ({item.actionLabel})
-                            </p>
-                          ),
-                        )
-                      )}
-                    </div>
-                    {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
-                    </p>
-                  </div>
-                </div>
+            <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3 hidden md:block">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Latest Txns</p>
+                {section === "support" ? (
+                  <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => navigateToSection("overview")}>
+                    Back
+                  </Button>
+                ) : null}
               </div>
-
-              {section === "overview" ? renderOverview() : null}
-              {section === "earnings" ? renderEarnings() : null}
-              {section === "proposals" ? renderProposals() : null}
-              {section === "profile" ? renderProfile() : null}
-              {section === "support" ? renderSupport() : null}
-            </section>
-          </main>
+              <div className="mt-2 space-y-2">
+                {recentTransactions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
+                ) : (
+                  recentTransactions.map((item) =>
+                    item.explorerUrl ? (
+                      <Link
+                        key={item.id}
+                        href={item.explorerUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                      >
+                        {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
+                      </Link>
+                    ) : (
+                      <p key={item.id} className="font-mono text-xs text-muted-foreground">
+                        {shortAddress(item.txHash!)} ({item.actionLabel})
+                      </p>
+                    ),
+                  )
+                )}
+              </div>
+              {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
+              <p className="mt-2 text-xs text-muted-foreground">
+                {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
+              </p>
+            </div>
+          </div>
         </div>
-      </SidebarProvider>
-    </div>
+
+        {section === "overview" ? renderOverview() : null}
+        {section === "earnings" ? renderEarnings() : null}
+        {section === "proposals" ? renderProposals() : null}
+        {section === "profile" ? renderProfile() : null}
+        {section === "support" ? renderSupport() : null}
+      </section>
+    </WorkerLayout>
   )
 }

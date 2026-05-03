@@ -156,7 +156,7 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
           <CardTitle>Verify Admin Wallet</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-6 text-muted-foreground">
+          <div className="rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-6 text-muted-foreground break-all whitespace-pre-wrap">
             {message}
           </div>
           {error ? <p className="text-sm text-destructive">{error.message}</p> : null}

@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 export interface NavItem {
@@ -28,6 +29,8 @@ export function SidebarNav({
   items: NavItem[];
   highlightMap?: Record<string, boolean>;
 }) {
+  const { setOpenMobile } = useSidebar();
+
   return (
     <SidebarContent>
       <SidebarGroup>
@@ -42,7 +45,10 @@ export function SidebarNav({
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
                     isActive={active}
-                    onClick={() => setSection(item.id)}
+                    onClick={() => {
+                      setSection(item.id);
+                      setOpenMobile(false);
+                    }}
                     tooltip={item.label}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 transition-all rounded-2xl group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
