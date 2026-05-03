@@ -20,7 +20,7 @@ contract Deploy is Script {
         // but reading from env keeps it compatible with CI/CD setups.
         uint256 pk = 0xe83bbb5223339d634ca6f0eb5225b9a0b611e3038a6eef7a44b66cab1b3907d5;
         address initialOwner = 0xF44d83F39578ca49a4d3E994b51455527946822d;
-        string memory mode = string("factory");
+        string memory mode = string("direct");
 
         vm.startBroadcast(pk);
 
