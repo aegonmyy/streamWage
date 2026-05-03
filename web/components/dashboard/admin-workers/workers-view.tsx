@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useAccount, useWaitForTransactionReceipt } from "wagmi"
 import { parseEther, getAddress, isAddress, type Address } from "viem"
 import { toast } from "sonner"
@@ -459,14 +459,6 @@ export function WorkersView() {
             </div>
             <div className="flex flex-col gap-3">
               <Button variant="outline" className="h-11 rounded-xl" onClick={() => setActiveModal(null)}>Close</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
-}
-nClick={() => setActiveModal(null)}>Close</Button>
             </div>
           </div>
         </DialogContent>

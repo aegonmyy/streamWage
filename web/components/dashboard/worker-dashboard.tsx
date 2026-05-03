@@ -9,10 +9,13 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Check,
+  Clock3,
   Copy,
   ExternalLink,
+  LayoutDashboard,
   LogOut,
   Menu,
+  User,
   Wallet,
   Zap,
 } from "lucide-react"
@@ -34,16 +37,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/dashboard/sidebar-nav"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
@@ -66,11 +59,12 @@ export const WORKER_SECTIONS: Array<{
   label: string
   eyebrow: string
   description: string
+  icon: any
 }> = [
-  { id: "overview", label: "Overview", eyebrow: "Today", description: "Your claimable balance, status, and the next action that matters." },
-  { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds, review totals, and understand how your timeline behaves." },
-  { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Accept, reject, or expire proposed terms that pause your accrual." },
-  { id: "profile", label: "Profile", eyebrow: "Identity", description: "Wallet details, metadata, and migration tools for moving your worker record." },
+  { id: "overview", label: "Overview", eyebrow: "Today", description: "Your claimable balance, status, and the next action that matters.", icon: LayoutDashboard },
+  { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds, review totals, and understand how your timeline behaves.", icon: Wallet },
+  { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Accept, reject, or expire proposed terms that pause your accrual.", icon: Clock3 },
+  { id: "profile", label: "Profile", eyebrow: "Identity", description: "Wallet details, metadata, and migration tools for moving your worker record.", icon: User },
 ]
 
 function toAddressOrThrow(value: string, label: string): Address {
@@ -94,6 +88,7 @@ function StatCard({
   hint,
   danger = false,
   className,
+  onClick,
   children,
 }: {
   title: string
@@ -101,10 +96,14 @@ function StatCard({
   hint: string
   danger?: boolean
   className?: string
+  onClick?: () => void
   children?: React.ReactNode
 }) {
   return (
-    <Card className={cn("rounded-[12px] md:rounded-2xl transition-all", danger && "border-destructive/40 bg-destructive/5", className)}>
+    <Card 
+      className={cn("rounded-[12px] md:rounded-2xl transition-all", danger && "border-destructive/40 bg-destructive/5", className)}
+      onClick={onClick}
+    >
       <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
         <CardDescription className="text-xs md:text-sm">{title}</CardDescription>
         <CardTitle className="text-[28px] md:text-2xl font-semibold tracking-tight leading-tight">{value}</CardTitle>
@@ -132,7 +131,7 @@ function MobileTopBar({
   }
 
   return (
-    <div className="sticky top-0 z-40 flex h-[56px] w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md md:hidden">
+    <div className="sticky top-0 z-40 flex md:hidden h-[56px] w-full items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <Zap className="h-5 w-5 fill-current" />
@@ -197,7 +196,7 @@ function FloatingNavPill({
     <div
       ref={pillRef}
       className={cn(
-        "fixed bottom-[calc(32px+env(safe-area-inset-bottom))] left-1/2 z-50 flex -translate-x-1/2 items-center justify-center overflow-hidden transition-all ease-in-out md:hidden shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
+        "fixed bottom-[calc(32px+env(safe-area-inset-bottom))] left-1/2 z-50 flex md:hidden -translate-x-1/2 items-center justify-center overflow-hidden transition-all ease-in-out shadow-[0_8px_32px_rgba(0,0,0,0.3)]",
         isExpanded
           ? "h-12 w-[calc(100%-48px)] max-w-[380px] rounded-full bg-[#111]/90 px-6 backdrop-blur-[8px] duration-[250ms]"
           : "h-12 w-12 rounded-full bg-[#111]/90 backdrop-blur-[8px] cursor-pointer duration-[200ms]"
@@ -205,12 +204,12 @@ function FloatingNavPill({
       onClick={() => !isExpanded && setIsExpanded(true)}
     >
       {isExpanded ? (
-        <div className="flex w-full items-center justify-between text-[14px] font-medium text-white/90">
-          <button type="button" onClick={() => handleAction(() => setSection("overview"))} className="hover:text-white transition-colors">Overview</button>
+        <div className="flex w-full items-center justify-between text-[14px] font-medium text-white">
+          <button type="button" onClick={() => handleAction(() => setSection("overview"))} className="hover:text-white/80 transition-colors">Overview</button>
           <span className="text-white/20">·</span>
-          <button type="button" onClick={() => handleAction(() => setSection("proposals"))} className="hover:text-white transition-colors">Proposals</button>
+          <button type="button" onClick={() => handleAction(() => setSection("proposals"))} className="hover:text-white/80 transition-colors">Proposals</button>
           <span className="text-white/20">·</span>
-          <button type="button" onClick={() => handleAction(() => setSection("support"))} className="hover:text-white transition-colors">Help</button>
+          <button type="button" onClick={() => handleAction(() => setSection("support"))} className="hover:text-white/80 transition-colors">Help</button>
           <span className="text-white/20">·</span>
           <button type="button" onClick={() => handleAction(() => disconnect())} className="text-red-400 hover:text-red-300 transition-colors">Disconnect</button>
         </div>

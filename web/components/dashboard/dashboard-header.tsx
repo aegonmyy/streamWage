@@ -18,7 +18,7 @@ export function DashboardHeader({ view }: DashboardHeaderProps) {
   const RoleIcon = roleIcon
 
   return (
-    <header className="sticky top-0 z-50 hidden border-b border-border/60 bg-card md:block">
+    <header className="sticky top-0 z-50 hidden border-b border-border/60 bg-card md:flex">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
