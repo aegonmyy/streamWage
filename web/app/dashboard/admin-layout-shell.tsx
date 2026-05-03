@@ -80,13 +80,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <SidebarHeader className="border-b border-border/70 px-5 py-5">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <BriefcaseBusiness className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+                    <Zap className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                     <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
-                  </div>
-                </div>
-              </SidebarHeader>
+                    </div>
+                    </div>
+                    </SidebarHeader>
 
               <SidebarNav 
                 section={currentSection} 

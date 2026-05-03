@@ -82,7 +82,7 @@ export const SIDEBAR_SECTIONS: Array<{
   description: string
   icon: any
 }> = [
-  { id: "overview", label: "Overview", description: "Treasury health, headcount, and urgent operator tasks.", icon: LayoutDashboard },
+  { id: "overview", label: "Overview", description: "Treasury health, headcount, and urgent operator tasks.", icon: Zap },
   { id: "workers", label: "Workers", description: "Add workers, adjust terms, and manage active status.", icon: Users },
   { id: "proposals", label: "Proposals", description: "Track pending term changes that pause accrual until resolved.", icon: Clock3 },
   { id: "treasury", label: "Treasury", description: "Fund payroll, monitor runway, and manage safe withdrawals.", icon: Wallet },

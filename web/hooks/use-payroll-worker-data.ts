@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useAccount, usePublicClient, useWatchContractEvent } from "wagmi"
+import { useAccount, usePublicClient } from "wagmi"
 import { decodeEventLog, getAddress, type Address } from "viem"
 import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
 import {
@@ -73,6 +73,7 @@ export function usePayrollWorkerData() {
   const query = useQuery({
     queryKey: [...QUERY_KEY, address],
     enabled: !!contract && !!publicClient && !!address,
+    refetchInterval: 30_000, // Poll every 30s instead of using eth_newFilter
     queryFn: async (): Promise<WorkerDashboardData> => {
       if (!contract || !publicClient || !address) {
         throw new Error("Wallet and payroll contract are required.")
@@ -320,16 +321,6 @@ export function usePayrollWorkerData() {
       }
     },
     staleTime: 15_000,
-  })
-
-  useWatchContractEvent({
-    address: contract?.address,
-    abi: payrollAbi,
-    chainId: contract?.chainId,
-    enabled: !!contract && !!address,
-    onLogs: () => {
-      void queryClient.invalidateQueries({ queryKey: [...QUERY_KEY, address] })
-    },
   })
 
   useEffect(() => {

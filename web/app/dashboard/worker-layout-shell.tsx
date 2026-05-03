@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import {
-  BriefcaseBusiness,
+  Zap,
   ChevronRight,
   Clock3,
   LayoutDashboard,
@@ -72,8 +72,8 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
             <SidebarHeader className="border-b border-border/70 px-5 py-5">
               <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <BriefcaseBusiness className="h-5 w-5" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                  <Zap className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 group-data-[collapsible=icon]:hidden">
                   <p className="text-sm font-semibold text-foreground">Worker Dashboard</p>
@@ -85,6 +85,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
               section={currentSection} 
               setSection={handleSectionChange} 
               items={SIDEBAR_ITEMS}
+              activeClassName="bg-amber-500/10 text-amber-600"
               highlightMap={{
                 proposals: !!data?.pendingProposal,
               }}

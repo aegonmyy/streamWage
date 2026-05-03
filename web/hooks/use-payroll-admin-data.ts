@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { usePublicClient, useWatchContractEvent } from "wagmi"
+import { usePublicClient } from "wagmi"
 import { decodeEventLog, formatEther, formatUnits, getAddress, type Address } from "viem"
 import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
 
@@ -295,16 +295,6 @@ export function usePayrollAdminData() {
     },
     staleTime: 15_000,
     refetchInterval: 30_000,
-  })
-
-  useWatchContractEvent({
-    address: contract?.address,
-    abi: payrollAbi,
-    chainId: contract?.chainId,
-    enabled: !!contract,
-    onLogs: () => {
-      void queryClient.invalidateQueries({ queryKey: QUERY_KEY })
-    },
   })
 
   useEffect(() => {

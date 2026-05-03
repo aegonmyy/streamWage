@@ -23,11 +23,13 @@ export function SidebarNav({
   setSection,
   items,
   highlightMap = {},
+  activeClassName = "bg-primary/10 text-primary",
 }: {
   section: string;
   setSection: (id: any) => void;
   items: NavItem[];
   highlightMap?: Record<string, boolean>;
+  activeClassName?: string;
 }) {
   const { setOpenMobile } = useSidebar();
 
@@ -53,7 +55,7 @@ export function SidebarNav({
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 transition-all rounded-2xl group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
                       active
-                        ? "bg-primary/10 text-primary"
+                        ? activeClassName
                         : "hover:bg-muted",
                       !active &&
                         highlighted &&
