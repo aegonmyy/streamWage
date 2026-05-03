@@ -20,8 +20,8 @@ import {
   Zap,
 } from "lucide-react"
 import { toast } from "sonner"
-import { useAccount, useDisconnect, useWaitForTransactionReceipt } from "wagmi"
-import { getAddress, isAddress, type Address } from "viem"
+import { useAccount, useDisconnect, useWaitForTransactionReceipt, useBalance, useReadContract } from "wagmi"
+import { formatEther, getAddress, isAddress, type Address } from "viem"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +37,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/dashboard/sidebar-nav"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
@@ -234,6 +240,25 @@ export function WorkerDashboard() {
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
+  const { data: treasuryBalance, refetch: refetchTreasury } = useBalance({
+    address: contract?.address,
+    query: { refetchInterval: 30_000 }
+  })
+
+  const { data: emergencyPaused, refetch: refetchEmergencyPaused } = useReadContract({
+    address: contract?.address,
+    abi: contract?.abi,
+    functionName: 'emergencyPaused',
+    query: { refetchInterval: 10_000 }
+  })
+
+  const theoreticalWei = data?.claimableWei ?? 0n
+  const treasuryWei = treasuryBalance?.value ?? 0n
+  const isSolvent = treasuryWei >= theoreticalWei
+  const actualClaimableWei = isSolvent ? theoreticalWei : treasuryWei
+  const shortfallWei = isSolvent ? 0n : theoreticalWei - treasuryWei
+  const isTreasuryEmpty = treasuryWei === 0n
+
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
   const recentTransactions = useMemo(
     () =>
@@ -255,9 +280,9 @@ export function WorkerDashboard() {
 
   useEffect(() => {
     if (receipt.isSuccess) {
-      refetch()
+      Promise.all([refetch(), refetchTreasury(), refetchEmergencyPaused()])
     }
-  }, [receipt.isSuccess, refetch])
+  }, [receipt.isSuccess, refetch, refetchTreasury, refetchEmergencyPaused])
 
   async function executeWrite(
     actionLabel: string,
@@ -413,26 +438,50 @@ export function WorkerDashboard() {
       <div className="grid gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Claimable"
-          value={`${formatEth(data.claimableWei)} ETH`}
-          hint="Available to claim."
+          value={`${formatEth(theoreticalWei)} ETH`}
+          hint={isSolvent ? "Available to claim." : `Shortfall: ${formatEth(shortfallWei)} ETH`}
+          danger={!isSolvent}
         >
+          <div className="mt-2 space-y-2">
+            {!isSolvent && !isTreasuryEmpty && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2 text-[10px] text-amber-600 font-medium leading-tight">
+                ⚠ Treasury can only cover {formatEth(actualClaimableWei)} ETH right now.
+              </div>
+            )}
+            {isTreasuryEmpty && (
+              <p className="text-[10px] text-destructive font-medium">
+                ✗ Treasury is empty — claim will fail
+              </p>
+            )}
+            {isSolvent && theoreticalWei > 0n && (
+              <p className="text-[10px] text-emerald-600 font-medium">
+                ✓ Treasury can cover this claim
+              </p>
+            )}
+          </div>
           <div className="mt-3 md:hidden">
-            <Button
-              className="w-full h-9 text-xs gap-2 rounded-xl"
-              disabled={isWalletPending || data.claimableWei === 0n || !data.active}
-              onClick={() =>
-                void executeWrite("Claim earnings", async () =>
-                  writeContractAsync({
-                    ...contract!,
-                    functionName: "claim",
-                    args: [],
-                  }),
-                )
-              }
-            >
-              <ArrowUpRight className="h-3.5 w-3.5" />
-              {data.active ? "Claim Now" : "Paused — cannot claim"}
-            </Button>
+            {emergencyPaused ? (
+              <Button className="w-full h-9 text-xs rounded-xl bg-muted text-muted-foreground" disabled>
+                Protocol paused — claims disabled
+              </Button>
+            ) : (
+              <Button
+                className="w-full h-9 text-xs gap-2 rounded-xl"
+                disabled={isWalletPending || isTreasuryEmpty || !data.active}
+                onClick={() =>
+                  void executeWrite("Claim earnings", async () =>
+                    writeContractAsync({
+                      ...contract!,
+                      functionName: "claim",
+                      args: [],
+                    }),
+                  )
+                }
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                {data.active ? `Claim ${formatEth(actualClaimableWei)} ETH` : "Paused — cannot claim"}
+              </Button>
+            )}
           </div>
         </StatCard>
 
@@ -463,24 +512,37 @@ export function WorkerDashboard() {
           className="hidden md:block"
         />
 
-        <StatCard
-          title="Worker Runway"
-          value={data.runwaySeconds === 0n ? "No runway" : formatDuration(data.runwaySeconds)}
-          hint={data.runwaySeconds === 0n ? "Treasury empty or paused" : "Estimated runway."}
-          danger={data.runwaySeconds === 0n}
-        >
-          {data.runwaySeconds > 0n && (
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary md:hidden">
-              <div
-                className={cn(
-                  "h-full transition-all duration-500",
-                  data.runwaySeconds < 86400n ? "bg-destructive" : "bg-primary"
-                )}
-                style={{ width: `${Math.min(100, Number(data.runwaySeconds) / 2592000 * 100)}%` }}
-              />
-            </div>
-          )}
-        </StatCard>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-help">
+                <StatCard
+                  title="Worker Runway"
+                  value={data.runwaySeconds === 0n ? "No runway" : formatDuration(data.runwaySeconds)}
+                  hint={data.runwaySeconds === 0n ? "Treasury empty or paused" : "Estimated runway."}
+                  danger={data.runwaySeconds === 0n}
+                >
+                  {data.runwaySeconds > 0n && (
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary md:hidden">
+                      <div
+                        className={cn(
+                          "h-full transition-all duration-500",
+                          data.runwaySeconds < 86400n ? "bg-destructive" : "bg-primary"
+                        )}
+                        style={{ width: `${Math.min(100, Number(data.runwaySeconds) / 2592000 * 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </StatCard>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
+              <p className="text-xs font-medium leading-relaxed">
+                Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Card className="md:hidden">
@@ -599,51 +661,89 @@ export function WorkerDashboard() {
   const renderEarnings = () => (
     <div className="space-y-4 md:space-y-6">
       <div className="grid gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Claimable now" value={`${formatEth(data.claimableWei)} ETH`} hint="Available to claim immediately." />
+        <StatCard title="Claimable now" value={`${formatEth(theoreticalWei)} ETH`} hint={isSolvent ? "Available to claim immediately." : `Treasury capped: ${formatEth(actualClaimableWei)} ETH`} danger={!isSolvent} />
         <StatCard title="Accrued checkpoint" value={`${formatEth(data.accruedWei)} ETH`} hint="Accrued onchain balance." />
         <StatCard title="Total claimed" value={`${formatEth(data.totalClaimedWei)} ETH`} hint="Lifetime claimed." />
         <StatCard title="Current rate" value={data.timeline === "Trigger" ? "Trigger" : formatRate(data)} hint="Active compensation timeline." />
       </div>
 
       <div className="grid gap-3 md:gap-4 md:grid-cols-2">
-        <Card className="rounded-[12px] md:rounded-2xl">
+        <Card className="rounded-[12px] md:rounded-2xl overflow-hidden">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Claim earnings</CardTitle>
             <CardDescription className="text-xs md:text-sm">Primary worker action.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button className="w-full md:w-auto gap-2 rounded-xl h-10 md:h-9" disabled={isWalletPending || data.claimableWei === 0n}>
-                  <ArrowUpRight className="h-4 w-4" />
-                  Claim To Connected Wallet
+            {!isSolvent && !isTreasuryEmpty && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <p className="text-xs font-bold uppercase tracking-wider">Treasury Shortfall</p>
+                </div>
+                <p className="text-sm">
+                  The treasury can only cover <span className="font-bold">{formatEth(actualClaimableWei)} ETH</span> of your <span className="font-bold">{formatEth(theoreticalWei)} ETH</span> claim right now.
+                </p>
+                <p className="text-xs opacity-70">
+                  Shortfall: {formatEth(shortfallWei)} ETH
+                </p>
+              </div>
+            )}
+
+            {isTreasuryEmpty && (
+              <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive space-y-2">
+                <p className="text-sm font-bold">✗ Treasury is empty — claim will fail</p>
+              </div>
+            )}
+
+            {emergencyPaused ? (
+              <div className="space-y-3">
+                <Button className="w-full md:w-auto h-10 md:h-9 rounded-xl bg-muted text-muted-foreground" disabled>
+                  Protocol paused — claims disabled
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Claim to connected wallet?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will send {formatEth(data.claimableWei)} ETH to {address ? shortAddress(address) : "the connected wallet"}.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Back</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() =>
-                      void executeWrite("Claim earnings", async () =>
-                        writeContractAsync({
-                          ...contract!,
-                          functionName: "claim",
-                          args: [],
-                        }),
-                      )
-                    }
+                <p className="text-xs text-muted-foreground italic">
+                  The operator has paused the protocol. Claims will resume when the operator lifts the pause.
+                </p>
+              </div>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    className="w-full md:w-auto gap-2 rounded-xl h-10 md:h-9" 
+                    disabled={isWalletPending || isTreasuryEmpty || !data.active}
                   >
-                    Confirm Claim
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                    <ArrowUpRight className="h-4 w-4" />
+                    Claim {formatEth(actualClaimableWei)} ETH
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirm payout?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {isSolvent 
+                        ? `This will send ${formatEth(theoreticalWei)} ETH to your wallet.`
+                        : `This will send the remaining treasury balance (${formatEth(actualClaimableWei)} ETH) to your wallet. The remaining ${formatEth(shortfallWei)} ETH can be claimed later.`
+                      }
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Back</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        void executeWrite("Claim earnings", async () =>
+                          writeContractAsync({
+                            ...contract!,
+                            functionName: "claim",
+                            args: [],
+                          }),
+                        )
+                      }
+                    >
+                      Confirm Claim
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <p className="text-xs text-muted-foreground">
               This sends your claimable balance to {address ? shortAddress(address) : "the connected wallet"}.
             </p>
@@ -656,38 +756,44 @@ export function WorkerDashboard() {
             <CardDescription className="text-xs md:text-sm">Use `claimTo(address)` for custom payout destination.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
-            <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || data.claimableWei === 0n}>
-                  Claim To Recipient
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Claim to custom recipient?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will send {formatEth(data.claimableWei)} ETH to {claimToAddress || "the entered address"}.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Back</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() =>
-                      void executeWrite("Claim to address", async () =>
-                        writeContractAsync({
-                          ...contract!,
-                          functionName: "claimTo",
-                          args: [toAddressOrThrow(claimToAddress, "Recipient")],
-                        }),
-                      )
-                    }
-                  >
-                    Confirm Payout
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" disabled={!!emergencyPaused} />
+            {emergencyPaused ? (
+              <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled>
+                Protocol paused
+              </Button>
+            ) : (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty || !data.active}>
+                    Claim {formatEth(actualClaimableWei)} ETH To Recipient
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Claim to custom recipient?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will send {formatEth(actualClaimableWei)} ETH to {claimToAddress || "the entered address"}.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Back</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() =>
+                        void executeWrite("Claim to address", async () =>
+                          writeContractAsync({
+                            ...contract!,
+                            functionName: "claimTo",
+                            args: [toAddressOrThrow(claimToAddress, "Recipient")],
+                          }),
+                        )
+                      }
+                    >
+                      Confirm Payout
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -714,6 +820,15 @@ export function WorkerDashboard() {
                 <StatCard title="Expires" value={humanExpiry(data.pendingProposal.expiryTimestamp)} hint="Side may call expire." danger />
                 <StatCard title="Reject effect" value={data.pendingProposal.terminateOnReject ? "Terminate" : "Resume old terms"} hint="Determined by proposal." danger={data.pendingProposal.terminateOnReject} />
               </div>
+
+              {data.pendingProposal.proposalNote && (
+                <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600/60">Message from operator</p>
+                  <blockquote className="text-sm text-blue-900/80 italic leading-relaxed">
+                    "{data.pendingProposal.proposalNote}"
+                  </blockquote>
+                </div>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 <AlertDialog>
@@ -1119,4 +1234,3 @@ export function WorkerDashboard() {
     </div>
   )
 }
-

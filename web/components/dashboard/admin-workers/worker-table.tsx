@@ -240,14 +240,28 @@ export function WorkerTable({
                 <TableCell>
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-bold text-foreground">{formatEth(worker.claimableWei)} ETH</p>
-                      {worker.claimableWei > 0n && isInsufficientTreasury && (
+                      <p className={cn(
+                        "text-sm font-bold",
+                        isInsufficientTreasury && treasuryBalanceWei > 0n ? "text-amber-500" : 
+                        isInsufficientTreasury && treasuryBalanceWei === 0n ? "text-destructive" :
+                        "text-foreground"
+                      )}>
+                        {isInsufficientTreasury ? formatEth(treasuryBalanceWei) : formatEth(worker.claimableWei)} ETH
+                        {isInsufficientTreasury && treasuryBalanceWei > 0n && (
+                          <span className="ml-1 text-[10px] font-bold uppercase tracking-tight opacity-80">(capped)</span>
+                        )}
+                      </p>
+                      {isInsufficientTreasury && (
                         <Tooltip>
                           <TooltipTrigger>
-                            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                            <AlertTriangle className={cn("h-3.5 w-3.5", treasuryBalanceWei === 0n ? "text-destructive" : "text-amber-500")} />
                           </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs font-medium">Treasury cannot cover this claim</p>
+                          <TooltipContent className="p-3 rounded-xl border-border/60 shadow-xl max-w-xs">
+                            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Treasury Cap</p>
+                            <p className="text-sm font-medium leading-relaxed">
+                              Theoretical claimable: <span className="font-bold">{formatEth(worker.claimableWei)} ETH</span>. 
+                              Treasury only covers <span className="font-bold">{formatEth(treasuryBalanceWei)} ETH</span>.
+                            </p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -337,23 +351,36 @@ function renderRunwayCell(worker: AdminWorkerRecord) {
   if (seconds < day * 7n) color = "text-destructive"
   else if (seconds < day * 30n) color = "text-amber-500"
 
-  if (seconds > day * 2n) {
-    return <p className={cn("text-sm font-bold", color)}>{seconds / day} days</p>
-  }
-  
-  if (seconds > hour * 1n) {
-    const h = seconds / hour
-    const m = (seconds % hour) / minute
-    return <p className={cn("text-sm font-bold", color)}>{h}h {m}m</p>
-  }
-  
+  const content = (
+    <>
+      {seconds > day * 2n ? (
+        <p className={cn("text-sm font-bold", color)}>{seconds / day} days</p>
+      ) : seconds > hour * 1n ? (
+        <p className={cn("text-sm font-bold", color)}>{seconds / hour}h {(seconds % hour) / minute}m</p>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+          <p className="text-sm font-bold text-destructive">
+            {seconds / minute} min
+          </p>
+        </div>
+      )}
+    </>
+  )
+
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
-      <p className="text-sm font-bold text-destructive">
-        {seconds / minute} min
-      </p>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="cursor-help inline-block">
+          {content}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
+        <p className="text-xs font-medium leading-relaxed">
+          Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+        </p>
+      </TooltipContent>
+    </Tooltip>
   )
 }
 

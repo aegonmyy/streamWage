@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -54,6 +55,7 @@ export function WorkersView() {
   const [formAmount, setFormAmount] = useState("")
   const [formInterval, setFormInterval] = useState("")
   const [formMetadata, setFormMetadata] = useState("")
+  const [formProposalNote, setFormProposalNote] = useState("")
   const [formTerminateOnReject, setFormTerminateOnReject] = useState(false)
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
@@ -130,6 +132,7 @@ export function WorkersView() {
       setFormTimeline(worker.timeline === "Hourly" ? "0" : worker.timeline === "Monthly" ? "1" : worker.timeline === "Custom" ? "2" : "3")
       setFormAmount("")
       setFormInterval("")
+      setFormProposalNote("")
       setFormTerminateOnReject(false)
       setActiveModal("propose-terms")
     } else if (action === "pause") {
@@ -315,6 +318,15 @@ export function WorkersView() {
                 <Input value={formInterval} onChange={(e) => setFormInterval(e.target.value)} type="number" placeholder="43200" className="font-mono rounded-xl" />
               </div>
             )}
+            <div className="space-y-2">
+              <Label>Note to worker (optional)</Label>
+              <Textarea 
+                value={formProposalNote} 
+                onChange={(e) => setFormProposalNote(e.target.value)} 
+                placeholder="Explain the reason for this proposal, include any relevant links..." 
+                className="rounded-xl resize-none h-24"
+              />
+            </div>
             <div className="flex items-center justify-between p-4 rounded-2xl border border-destructive/20 bg-destructive/5">
               <div className="space-y-0.5">
                 <Label className="text-destructive font-bold">Terminate on Reject</Label>
@@ -340,7 +352,8 @@ export function WorkersView() {
                     Number(formTimeline), 
                     parseEther(formAmount || "0"), 
                     formTimeline === "2" ? BigInt(formInterval || "0") : 0n, 
-                    formTerminateOnReject
+                    formTerminateOnReject,
+                    formProposalNote.trim()
                   ],
                 })
               })}

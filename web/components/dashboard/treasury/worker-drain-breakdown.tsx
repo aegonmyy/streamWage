@@ -14,6 +14,12 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function WorkerDrainBreakdownTable() {
   const { data: adminData, isLoading } = usePayrollAdminData();
@@ -112,9 +118,20 @@ export function WorkerDrainBreakdownTable() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className={cn("font-medium", getRunwayColor(worker.runwaySeconds))}>
-                    {formatRunway(worker.runwaySeconds, worker.ratePerSecond)}
-                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={cn("font-medium cursor-help", getRunwayColor(worker.runwaySeconds))}>
+                          {formatRunway(worker.runwaySeconds, worker.ratePerSecond)}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
+                        <p className="text-xs font-medium leading-relaxed">
+                          Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
                 <TableCell className="text-right">
                   <span className="text-sm text-muted-foreground">

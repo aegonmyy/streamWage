@@ -45,6 +45,7 @@ export type WorkerDashboardData = {
     intervalSeconds: bigint
     terminateOnReject: boolean
     expiryTimestamp: bigint
+    proposalNote: string
   } | null
   pendingMigration: {
     exists: boolean
@@ -114,6 +115,7 @@ export function usePayrollWorkerData() {
 
       const incomingCandidates = new Set<Address>()
       const recentActivity: WorkerActivityItem[] = []
+      let latestProposalNote = ""
 
       for (const log of logs) {
         const decoded = decodeEventLog({
@@ -135,6 +137,7 @@ export function usePayrollWorkerData() {
         }
 
         if (decoded.eventName === "TermsProposed" && getAddress(decoded.args.worker) === address) {
+          latestProposalNote = decoded.args.proposalNote || ""
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "New terms proposed",
@@ -303,6 +306,7 @@ export function usePayrollWorkerData() {
               intervalSeconds: pendingTerms[3],
               terminateOnReject: pendingTerms[4],
               expiryTimestamp: pendingTerms[5],
+              proposalNote: latestProposalNote,
             }
           : null,
         pendingMigration: pendingMigration[0]

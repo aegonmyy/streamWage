@@ -5,7 +5,13 @@ import { useBalance, useReadContract } from "wagmi";
 import { cn, formatEth, RUNWAY_DAYS, getRunwayColor, formatRunway } from "@/lib/utils";
 import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge"; // Assuming Badge is available for potential use
+import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface StatCardProps {
   title: string;
@@ -16,20 +22,43 @@ interface StatCardProps {
   cardClassName?: string;
 }
 
-const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassName }: StatCardProps) => (
-  <Card className={cn("flex-1 shadow-sm", cardClassName)}>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className={cn("text-2xl font-bold flex items-center gap-2", valueClassName)}>{value}</div>
-      <p className="text-xs text-muted-foreground mt-1">
-        {subLabel}
-        {warning && <span className="block mt-1 text-red-500 font-semibold">{warning}</span>}
-      </p>
-    </CardContent>
-  </Card>
-);
+const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassName }: StatCardProps) => {
+  const content = (
+    <Card className={cn("flex-1 shadow-sm", cardClassName)}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={cn("text-2xl font-bold flex items-center gap-2", valueClassName)}>{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">
+          {subLabel}
+          {warning && <span className="block mt-1 text-red-500 font-semibold">{warning}</span>}
+        </p>
+      </CardContent>
+    </Card>
+  );
+
+  if (title === "Runway") {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-help h-full">
+              {content}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
+            <p className="text-xs font-medium leading-relaxed">
+              Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return content;
+};
 
 export function TreasuryStatCards() {
   const contractConfig = getPayrollContractConfig();

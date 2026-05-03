@@ -237,6 +237,39 @@
     },
     {
       "type": "function",
+      "name": "emergencyPaused",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setEmergencyPause",
+      "inputs": [
+        {
+          "name": "paused",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "emergencyDrain",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "pendingMigrations",
       "inputs": [
         {
@@ -1602,6 +1635,12 @@
               "name": "expiryTimestamp",
               "type": "uint256",
               "indexed": false
+            },
+            {
+              "internalType": "string",
+              "name": "proposalNote",
+              "type": "string",
+              "indexed": false
             }
           ],
           "type": "event",
@@ -2109,6 +2148,11 @@
               "internalType": "bool",
               "name": "terminateOnReject",
               "type": "bool"
+            },
+            {
+              "internalType": "string",
+              "name": "proposalNote",
+              "type": "string"
             }
           ],
           "stateMutability": "nonpayable",

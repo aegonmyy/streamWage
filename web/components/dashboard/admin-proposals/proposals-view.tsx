@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { useAccount, useWaitForTransactionReceipt } from "wagmi"
-import { parseEther, getAddress, isAddress, type Address } from "viem"
+import { useState, useMemo, useEffect, Fragment } from "react"
+import { useAccount, useWaitForTransactionReceipt, usePublicClient } from "wagmi"
+import { parseEther, getAddress, isAddress, type Address, parseAbiItem } from "viem"
 import { toast } from "sonner"
 import { 
   AlertTriangle, 
@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -183,6 +184,7 @@ function ProposalStatCard({
 export function ProposalsView() {
   const contract = getPayrollContractConfig()
   const { data, isLoading, refetch } = usePayrollAdminData()
+  const publicClient = usePublicClient()
   
   const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)))
   useEffect(() => {
@@ -194,6 +196,38 @@ export function ProposalsView() {
 
   const [search, setSearch] = useState("")
   const [filter, setFilter] = useState<ProposalFilter>("all")
+  const [proposalNotes, setProposalNotes] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!publicClient || !contract || !data?.workers) return
+      
+      const workersWithProposals = data.workers.filter(w => w.pendingProposal)
+      if (workersWithProposals.length === 0) return
+
+      try {
+        // Fetch logs for each worker with a proposal
+        // We do this in parallel for speed
+        const notesMap: Record<string, string> = {}
+        await Promise.all(workersWithProposals.map(async (worker) => {
+          const logs = await publicClient.getLogs({
+            address: contract.address,
+            event: parseAbiItem('event TermsProposed(address indexed worker, uint8 timeline, uint256 amountPerIntervalWei, uint256 intervalSeconds, bool terminateOnReject, uint256 expiryTimestamp, string proposalNote)'),
+            args: { worker: worker.address as Address },
+            fromBlock: 'earliest'
+          })
+          if (logs.length > 0) {
+            notesMap[worker.address] = logs[logs.length - 1].args.proposalNote || ""
+          }
+        }))
+        setProposalNotes(prev => ({ ...prev, ...notesMap }))
+      } catch (err) {
+        console.error("Failed to fetch proposal notes:", err)
+      }
+    }
+
+    fetchNotes()
+  }, [publicClient, contract?.address, data?.workers])
 
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedWorker, setSelectedWorker] = useState<AdminWorkerRecord | null>(null)
@@ -202,6 +236,7 @@ export function ProposalsView() {
   const [formTimeline, setFormTimeline] = useState("0")
   const [formAmount, setFormAmount] = useState("")
   const [formInterval, setFormInterval] = useState("")
+  const [formProposalNote, setFormProposalNote] = useState("")
   const [formTerminateOnReject, setFormTerminateOnReject] = useState(false)
   const [formReviewWindowDays, setFormReviewWindowDays] = useState("")
 
@@ -274,6 +309,7 @@ export function ProposalsView() {
       setFormTimeline("0")
       setFormAmount("")
       setFormInterval("")
+      setFormProposalNote("")
       setFormTerminateOnReject(false)
     } else {
       setSelectedWorker(null)
@@ -281,6 +317,7 @@ export function ProposalsView() {
       setFormTimeline("0")
       setFormAmount("")
       setFormInterval("")
+      setFormProposalNote("")
       setFormTerminateOnReject(false)
     }
     setActiveModal("propose")
@@ -387,74 +424,86 @@ export function ProposalsView() {
                     const isUrgent = proposal.expiryTimestamp - now < 3600n
                     const timelineChanged = worker.timeline !== proposal.timeline
                     const rateSignificantChange = proposal.amountPerIntervalWei > (worker.amountPerIntervalWei * 120n / 100n)
+                    const note = proposalNotes[worker.address]
 
                     return (
-                      <TableRow 
-                        key={worker.address} 
-                        className={cn(
-                          "group border-b border-border/40 transition-colors hover:bg-muted/20",
-                          isHighStakes && "border-l-4 border-l-destructive/50",
-                          isUrgent && "border-l-4 border-l-destructive animate-pulse"
+                      <Fragment key={worker.address}>
+                        <TableRow 
+                          className={cn(
+                            "group border-b border-border/40 transition-colors hover:bg-muted/20",
+                            isHighStakes && "border-l-4 border-l-destructive/50",
+                            isUrgent && "border-l-4 border-l-destructive animate-pulse"
+                          )}
+                        >
+                          <TableCell className="py-5">
+                            <div className="space-y-1.5">
+                              <p className="font-mono text-sm font-bold tracking-tight">
+                                {worker.address.slice(0, 6)}...{worker.address.slice(-4)}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground/70 font-medium truncate max-w-[200px]">
+                                {worker.metadata || "No metadata"}
+                              </p>
+                              {isHighStakes && (
+                                <Badge variant="destructive" className="text-[9px] h-4 px-1.5 font-bold uppercase tracking-wider">
+                                  Terminates on Reject
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Current</p>
+                              <p className="text-xs font-medium text-muted-foreground">
+                                {formatRateDisplay(worker)}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Proposed</p>
+                              <p className={cn(
+                                "text-sm font-bold",
+                                (timelineChanged || rateSignificantChange) ? "text-primary" : "text-foreground"
+                              )}>
+                                {formatRateDisplay({
+                                  timeline: proposal.timeline,
+                                  amountPerIntervalWei: proposal.amountPerIntervalWei,
+                                  intervalSeconds: proposal.intervalSeconds
+                                })}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {formatTimeRemaining(proposal.expiryTimestamp, now)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl h-8 px-3"
+                              onClick={() => {
+                                setSelectedWorker(worker)
+                                setActiveModal("cancel")
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {note && (
+                          <TableRow className="bg-muted/5 border-b border-border/40 hover:bg-muted/5">
+                            <TableCell colSpan={5} className="py-2.5 px-8">
+                              <p className="text-[11px] font-medium text-muted-foreground/80 leading-relaxed">
+                                <span className="font-bold text-muted-foreground/40 mr-1.5 text-[9px] uppercase tracking-wider">📝 Note:</span>
+                                {note}
+                              </p>
+                            </TableCell>
+                          </TableRow>
                         )}
-                      >
-                        <TableCell className="py-5">
-                          <div className="space-y-1.5">
-                            <p className="font-mono text-sm font-bold tracking-tight">
-                              {worker.address.slice(0, 6)}...{worker.address.slice(-4)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground/70 font-medium truncate max-w-[200px]">
-                              {worker.metadata || "No metadata"}
-                            </p>
-                            {isHighStakes && (
-                              <Badge variant="destructive" className="text-[9px] h-4 px-1.5 font-bold uppercase tracking-wider">
-                                Terminates on Reject
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Current</p>
-                            <p className="text-xs font-medium text-muted-foreground">
-                              {formatRateDisplay(worker)}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Proposed</p>
-                            <p className={cn(
-                              "text-sm font-bold",
-                              (timelineChanged || rateSignificantChange) ? "text-primary" : "text-foreground"
-                            )}>
-                              {formatRateDisplay({
-                                timeline: proposal.timeline,
-                                amountPerIntervalWei: proposal.amountPerIntervalWei,
-                                intervalSeconds: proposal.intervalSeconds
-                              })}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {formatTimeRemaining(proposal.expiryTimestamp, now)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl h-8 px-3"
-                            onClick={() => {
-                              setSelectedWorker(worker)
-                              setActiveModal("cancel")
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      </Fragment>
                     )
                   })}
                 </TableBody>
@@ -633,6 +682,16 @@ export function ProposalsView() {
                 </div>
               )}
 
+              <div className="space-y-2">
+                <Label>Note to worker (optional)</Label>
+                <Textarea 
+                  value={formProposalNote} 
+                  onChange={(e) => setFormProposalNote(e.target.value)} 
+                  placeholder="Explain the reason for this proposal, include any relevant links..." 
+                  className="rounded-xl resize-none h-24"
+                />
+              </div>
+
               <div className="flex items-center justify-between p-4 rounded-2xl border border-destructive/20 bg-destructive/[0.03]">
                 <div className="space-y-0.5 max-w-[80%]">
                   <Label className="text-destructive font-bold cursor-pointer" htmlFor="terminate-toggle">
@@ -674,7 +733,7 @@ export function ProposalsView() {
                   return writeContractAsync({
                     ...contract,
                     functionName: "proposeTerms",
-                    args: [getAddress(targetAddr), timeline, amountWei, interval, formTerminateOnReject],
+                    args: [getAddress(targetAddr), timeline, amountWei, interval, formTerminateOnReject, formProposalNote.trim()],
                   })
                 })}
               >
