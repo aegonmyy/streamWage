@@ -35,7 +35,7 @@ export const formatRunway = (seconds: bigint | undefined, totalRatePerSecond: bi
     return `${Math.floor(hours / 24)} days`;
   } else if (hours >= 1) {
     return `${Math.floor(hours)} hours`;
-  } else if (totalSeconds > 0n) {
+  } else if (totalSeconds > 0) {
     return "< 1 hour";
   }
   return "—";

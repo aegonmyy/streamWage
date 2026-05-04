@@ -25,7 +25,7 @@ import {
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { getPayrollContractConfig, getLogsInChunks } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
@@ -184,7 +184,7 @@ function ProposalStatCard({
 export function ProposalsView() {
   const contract = getPayrollContractConfig()
   const { data, isLoading, refetch } = usePayrollAdminData()
-  const publicClient = usePublicClient()
+  const publicClient = usePublicClient({ chainId: contract?.chainId })
   
   const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)))
   useEffect(() => {
@@ -200,9 +200,10 @@ export function ProposalsView() {
 
   useEffect(() => {
     const fetchNotes = async () => {
-      if (!publicClient || !contract || !data?.workers) return
+      const workers = Array.isArray(data?.workers) ? data.workers : []
+      if (!publicClient || !contract || workers.length === 0) return
       
-      const workersWithProposals = data.workers.filter(w => w.pendingProposal)
+      const workersWithProposals = workers.filter(w => w.pendingProposal)
       if (workersWithProposals.length === 0) return
 
       try {
@@ -210,14 +211,16 @@ export function ProposalsView() {
         // We do this in parallel for speed
         const notesMap: Record<string, string> = {}
         await Promise.all(workersWithProposals.map(async (worker) => {
-          const logs = await publicClient.getLogs({
+          const logs = await getLogsInChunks(publicClient, {
             address: contract.address,
             event: parseAbiItem('event TermsProposed(address indexed worker, uint8 timeline, uint256 amountPerIntervalWei, uint256 intervalSeconds, bool terminateOnReject, uint256 expiryTimestamp, string proposalNote)'),
             args: { worker: worker.address as Address },
-            fromBlock: 'earliest'
+            fromBlock: contract.fromBlock,
+            toBlock: 'latest'
           })
           if (logs.length > 0) {
-            notesMap[worker.address] = logs[logs.length - 1].args.proposalNote || ""
+            const lastLog = logs[logs.length - 1] as any
+            notesMap[worker.address] = lastLog.args.proposalNote || ""
           }
         }))
         setProposalNotes(prev => ({ ...prev, ...notesMap }))
@@ -249,7 +252,7 @@ export function ProposalsView() {
     }
   }, [receipt.isSuccess, refetch])
 
-  const workers = data?.workers ?? []
+  const workers = Array.isArray(data?.workers) ? data.workers : []
   const allProposals = workers.filter(w => w.pendingProposal)
   
   const activeProposals = allProposals.filter(w => w.pendingProposal!.expiryTimestamp > now)

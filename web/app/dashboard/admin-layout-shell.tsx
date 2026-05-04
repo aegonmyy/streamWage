@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 setSection={handleSectionChange} 
                 items={SIDEBAR_ITEMS}
                 highlightMap={{
-                  proposals: (data?.workers?.filter(w => w.pendingProposal).length ?? 0) > 0,
+                  proposals: (Array.isArray(data?.workers) ? data.workers.filter(w => w.pendingProposal).length : 0) > 0,
                 }}
               />
             </div>

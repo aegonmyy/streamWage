@@ -157,18 +157,21 @@ export function WorkerDashboard() {
   const actualClaimableWei = isSolvent ? theoreticalWei : treasuryWei
   const shortfallWei = isSolvent ? 0n : theoreticalWei - treasuryWei
   const isTreasuryEmpty = treasuryWei === 0n
+  const emergencyPaused = false
+  const isProposalUrgent = !!data?.pendingProposal?.terminateOnReject
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
+  const recentActivity = Array.isArray(data?.recentActivity) ? data.recentActivity : []
   const recentTransactions = useMemo(
     () =>
-      (data?.recentActivity ?? [])
+      recentActivity
         .filter((item) => item.txHash)
         .slice(0, 4)
         .map((item) => ({
           ...item,
           explorerUrl: contract ? getTransactionExplorerUrl(contract.chainId, item.txHash!) : "",
         })),
-    [contract, data?.recentActivity],
+    [contract, recentActivity],
   )
 
   useEffect(() => {

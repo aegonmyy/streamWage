@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccount, usePublicClient } from "wagmi"
 import { decodeEventLog, getAddress, type Address } from "viem"
-import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
+import { getPayrollContractConfig, payrollAbi, getLogsInChunks, getPayrollEventLookbackBlocks } from "@/lib/payroll-contract"
 import {
   formatDuration,
   formatEth,
@@ -108,10 +108,17 @@ export function usePayrollWorkerData() {
       const worker = workerResult.result as WorkerResult
       const pendingTerms = pendingTermsResult.result as PendingTermsResult
       const pendingMigration = pendingMigrationResult.result as PendingMigrationResult
+      const currentBlock = await publicClient.getBlockNumber()
+      const lookbackBlocks = getPayrollEventLookbackBlocks()
+      const recentFromBlock =
+        currentBlock > lookbackBlocks
+          ? (currentBlock - lookbackBlocks > contract.fromBlock ? currentBlock - lookbackBlocks : contract.fromBlock)
+          : contract.fromBlock
+
       const logs = await getLogsInChunks(publicClient, {
         address: contract.address,
-        fromBlock: contract.fromBlock,
-        toBlock: "latest",
+        fromBlock: recentFromBlock,
+        toBlock: currentBlock,
       })
 
       const incomingCandidates = new Set<Address>()
@@ -119,21 +126,23 @@ export function usePayrollWorkerData() {
       let latestProposalNote = ""
       
       for (const log of logs) {
-  let decoded
-  try {
-    decoded = decodeEventLog({
-      abi: payrollAbi,
-      data: log.data,
-      topics: log.topics,
-    })
-  } catch {
-    continue
-  }
-        if (decoded.eventName === "Claimed" && getAddress(decoded.args.worker) === address) {
+        let decoded
+        try {
+          decoded = decodeEventLog({
+            abi: payrollAbi,
+            data: log.data,
+            topics: log.topics,
+          })
+        } catch {
+          continue
+        }
+        const args = decoded.args as any
+
+        if (decoded.eventName === "Claimed" && getAddress(args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "Claim processed",
-            detail: `${formatEth(decoded.args.amount)} ETH sent to ${getAddress(decoded.args.recipient)}`,
+            detail: `${formatEth(args.amount)} ETH sent to ${getAddress(args.recipient)}`,
             timestamp: log.blockNumber ?? null,
             tone: "default",
             txHash: log.transactionHash,
@@ -141,12 +150,12 @@ export function usePayrollWorkerData() {
           })
         }
 
-        if (decoded.eventName === "TermsProposed" && getAddress(decoded.args.worker) === address) {
-          latestProposalNote = decoded.args.proposalNote || ""
+        if (decoded.eventName === "TermsProposed" && getAddress(args.worker) === address) {
+          latestProposalNote = args.proposalNote || ""
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "New terms proposed",
-            detail: decoded.args.terminateOnReject
+            detail: args.terminateOnReject
               ? "Rejecting can terminate this worker record."
               : "You can accept or reject to resume normal flow.",
             timestamp: log.blockNumber ?? null,
@@ -156,7 +165,7 @@ export function usePayrollWorkerData() {
           })
         }
 
-        if (decoded.eventName === "TermsAccepted" && getAddress(decoded.args.worker) === address) {
+        if (decoded.eventName === "TermsAccepted" && getAddress(args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "Terms accepted",
@@ -168,7 +177,7 @@ export function usePayrollWorkerData() {
           })
         }
 
-        if (decoded.eventName === "TermsRejected" && getAddress(decoded.args.worker) === address) {
+        if (decoded.eventName === "TermsRejected" && getAddress(args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "Terms rejected",
@@ -180,23 +189,23 @@ export function usePayrollWorkerData() {
           })
         }
 
-        if (decoded.eventName === "ProposalExpired" && getAddress(decoded.args.worker) === address) {
+        if (decoded.eventName === "ProposalExpired" && getAddress(args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "Proposal expired",
-            detail: decoded.args.terminated
+            detail: args.terminated
               ? "The proposal expired and terminated this worker record."
               : "The proposal expired and old terms resumed.",
             timestamp: log.blockNumber ?? null,
-            tone: decoded.args.terminated ? "warning" : "default",
+            tone: args.terminated ? "warning" : "default",
             txHash: log.transactionHash,
             actionLabel: "proposal expired",
           })
         }
 
         if (decoded.eventName === "MigrationProposed") {
-          const oldAddress = getAddress(decoded.args.oldAddress)
-          const newAddress = getAddress(decoded.args.newAddress)
+          const oldAddress = getAddress(args.oldAddress)
+          const newAddress = getAddress(args.newAddress)
 
           if (oldAddress === address) {
             recentActivity.push({
@@ -225,8 +234,8 @@ export function usePayrollWorkerData() {
         }
 
         if (decoded.eventName === "MigrationCancelled") {
-          const oldAddress = getAddress(decoded.args.oldAddress)
-          const newAddress = getAddress(decoded.args.newAddress)
+          const oldAddress = getAddress(args.oldAddress)
+          const newAddress = getAddress(args.newAddress)
 
           if (oldAddress === address || newAddress === address) {
             recentActivity.push({
@@ -242,8 +251,8 @@ export function usePayrollWorkerData() {
         }
 
         if (decoded.eventName === "MigrationCompleted") {
-          const oldAddress = getAddress(decoded.args.oldAddress)
-          const newAddress = getAddress(decoded.args.newAddress)
+          const oldAddress = getAddress(args.oldAddress)
+          const newAddress = getAddress(args.newAddress)
 
           if (oldAddress === address || newAddress === address) {
             recentActivity.push({
@@ -258,11 +267,11 @@ export function usePayrollWorkerData() {
           }
         }
 
-        if (decoded.eventName === "LowTreasury" && getAddress(decoded.args.worker) === address) {
+        if (decoded.eventName === "LowTreasury" && getAddress(args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
             title: "Low treasury warning",
-            detail: `Estimated runway dropped to ${formatDuration(decoded.args.estimatedRunwaySeconds)}.`,
+            detail: `Estimated runway dropped to ${formatDuration(args.estimatedRunwaySeconds)}.`,
             timestamp: log.blockNumber ?? null,
             tone: "warning",
             txHash: log.transactionHash,

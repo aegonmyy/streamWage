@@ -25,13 +25,13 @@ export function WorkerDrainBreakdownTable() {
   const { data: adminData, isLoading } = usePayrollAdminData();
 
   const activeTimeWorkers = useMemo(() => {
-    if (!adminData?.workers) return [];
-    return adminData.workers
+    const workers = Array.isArray(adminData?.workers) ? adminData.workers : [];
+    return workers
       .filter((w) => w.status === "active" && w.timeline !== "Trigger")
       .map((worker) => {
         const ratePerSecond = worker.amountPerIntervalWei / (worker.intervalSeconds || 1n);
         const dailyDrainWei = ratePerSecond * 86400n;
-        const totalDrainRate = adminData.totalRatePerSecondWei || 1n;
+        const totalDrainRate = adminData?.totalRatePerSecondWei || 1n;
         const drainPercentage = (Number(ratePerSecond) / Number(totalDrainRate)) * 100;
 
         return {

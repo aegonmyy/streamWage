@@ -68,7 +68,7 @@ export function WorkersView() {
   }, [receipt.isSuccess, refetch])
 
   // Data processing
-  const workers = data?.workers ?? []
+  const workers = Array.isArray(data?.workers) ? data.workers : []
   const filteredWorkers = useMemo(() => {
     return workers.filter((worker) => {
       const matchesSearch = 

@@ -138,7 +138,7 @@ function MetricCard({
 }: {
   label: string
   value: string | React.ReactNode
-  subLabel: string
+  subLabel: React.ReactNode
   variant?: "neutral" | "success" | "warning" | "danger"
 }) {
   const borderClass = {
@@ -303,7 +303,8 @@ export function AdminDashboard() {
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const selectedSection = SIDEBAR_SECTIONS.find((item) => item.id === section) ?? SIDEBAR_SECTIONS[0]
-  const workers = data?.workers ?? []
+  const workers = Array.isArray(data?.workers) ? data.workers : []
+  const admins = Array.isArray(data?.admins) ? data.admins : []
   const pendingProposals = workers.filter((worker) => worker.pendingProposal)
   const owner = data?.owner
   const isOwner = !!owner && !!connectedAddress && getAddress(owner) === getAddress(connectedAddress)
@@ -311,6 +312,7 @@ export function AdminDashboard() {
   const lowTreasuryThresholdSeconds = data?.lowTreasuryThresholdSeconds ?? 0n
   const runwaySeconds = data?.runwaySeconds ?? 0n
   const totalRatePerSecondWei = data?.totalRatePerSecondWei ?? 0n
+  const lifetimePaidWei = data?.lifetimePaidWei ?? 0n
   const isLowTreasury = lowTreasuryThresholdSeconds > 0n && runwaySeconds < lowTreasuryThresholdSeconds
 
   const safeWithdrawableWei = useMemo(() => {
@@ -609,7 +611,7 @@ export function AdminDashboard() {
             <QuickStat label="Total Workers" value={totalWorkersCount} />
             <QuickStat label="Pending Proposals" value={pendingProposals.length} />
             <QuickStat label="Pending Migrations" value={pendingMigrationsCount} />
-            <QuickStat label="Lifetime Paid" value={`${formatEth(data.lifetimePaidWei, 2)} ETH`} />
+            <QuickStat label="Lifetime Paid" value={`${formatEth(lifetimePaidWei, 2)} ETH`} />
           </div>
         </div>
       </div>
@@ -784,7 +786,7 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          {data.admins.map((admin) => (
+          {admins.map((admin) => (
             <div
               key={admin}
               className="flex flex-col gap-3 rounded-2xl border border-border/70 p-4 md:flex-row md:items-center md:justify-between"

@@ -16,8 +16,10 @@ export default function TreasuryPage() {
   // Fetch treasury balance
   const { data: balanceData, refetch: refetchBalance } = useBalance({
     address: contractAddress,
-    watch: true,
-    refetchInterval: 30_000,
+    query: {
+      refetchInterval: 30_000,
+      enabled: !!contractAddress,
+    },
   });
   const contractBalance = balanceData?.value || 0n;
 
@@ -56,4 +58,3 @@ export default function TreasuryPage() {
     </DashboardShell>
   );
 }
-

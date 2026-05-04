@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Bell, Zap, ChevronLeft, ChevronRight, CircleHelp, Shield, Wallet } from "lucide-react"
+import { Bell, BriefcaseBusiness, Zap, ChevronLeft, ChevronRight, CircleHelp, Shield, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"

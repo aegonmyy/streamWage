@@ -74,6 +74,7 @@ export function usePayrollRole() {
     isConnected,
     role,
     isAdmin: role === "admin",
+    isOwner,
     isDevMode,
     isLoading: isConnected && !!normalizedAddress && !!contract && query.isLoading,
     isError: query.isError,

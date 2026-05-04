@@ -132,22 +132,23 @@ export function usePayrollAdminData() {
           data: log.data,
           topics: log.topics,
         })
+        const args = decoded.args as any
 
         if (decoded.eventName === "WorkerAdded") {
-          workers.add(getAddress(decoded.args.worker))
+          workers.add(getAddress(args.worker))
         }
 
         if (decoded.eventName === "MigrationCompleted") {
-          workers.delete(getAddress(decoded.args.oldAddress))
-          workers.add(getAddress(decoded.args.newAddress))
+          workers.delete(getAddress(args.oldAddress))
+          workers.add(getAddress(args.newAddress))
         }
 
         if (decoded.eventName === "AdminUpdated") {
-          admins.set(getAddress(decoded.args.admin), decoded.args.enabled)
+          admins.set(getAddress(args.admin), args.enabled)
         }
 
         if (decoded.eventName === "OwnerTransferred") {
-          ownerFromLogs = getAddress(decoded.args.newOwner)
+          ownerFromLogs = getAddress(args.newOwner)
         }
       }
 
@@ -293,8 +294,8 @@ export function usePayrollAdminData() {
         lifetimePaidWei,
       }
     },
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   })
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { usePublicClient } from "wagmi";
 import { decodeEventLog } from "viem";
 import { cn, formatEth } from "@/lib/utils";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpIcon, ArrowDownRightIcon, MoveUpRightIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -24,7 +24,7 @@ export function RecentActivityFeed() {
   const [events, setEvents] = useState<TreasuryEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const contractConfig = getPayrollContractConfig();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: contractConfig?.chainId });
   const lastFetchedBlock = useRef<bigint>(0n);
 
   const fetchRecentEvents = useCallback(async (isInitial = false) => {
@@ -43,7 +43,7 @@ export function RecentActivityFeed() {
 
       if (fromBlock > currentBlock && !isInitial) return;
 
-      const logs = await publicClient.getLogs({
+      const logs = await getLogsInChunks(publicClient, {
         address: contractConfig.address,
         fromBlock,
         toBlock: currentBlock,
