@@ -62,13 +62,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   return (
     <SidebarProvider>
       <div className="relative mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
-        <div className="fixed left-0 top-1/2 z-50 -translate-y-1/2">
-          <SidebarTrigger className="h-12 w-6 rounded-l-none rounded-r-xl border border-l-0 border-border bg-card shadow-sm hover:bg-accent transition-all">
-            <ChevronRight className="h-4 w-4 transition-transform group-data-[state=expanded]:rotate-180" />
-          </SidebarTrigger>
-        </div>
-
         <Sidebar collapsible="icon" className="xl:sticky xl:top-24 xl:self-start">
+          <SidebarTrigger className="absolute -right-3 top-20 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
+          
           <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
             <SidebarHeader className="border-b border-border/70 px-5 py-5">
               <div className="flex items-start gap-3">
