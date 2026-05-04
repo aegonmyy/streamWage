@@ -117,14 +117,18 @@ export function usePayrollWorkerData() {
       const incomingCandidates = new Set<Address>()
       const recentActivity: WorkerActivityItem[] = []
       let latestProposalNote = ""
-
+      
       for (const log of logs) {
-        const decoded = decodeEventLog({
-          abi: payrollAbi,
-          data: log.data,
-          topics: log.topics,
-        })
-
+  let decoded
+  try {
+    decoded = decodeEventLog({
+      abi: payrollAbi,
+      data: log.data,
+      topics: log.topics,
+    })
+  } catch {
+    continue
+  }
         if (decoded.eventName === "Claimed" && getAddress(decoded.args.worker) === address) {
           recentActivity.push({
             id: `${log.transactionHash}-${log.logIndex}`,
