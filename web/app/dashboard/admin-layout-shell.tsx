@@ -10,6 +10,7 @@ import {
   Shield,
   Users,
   Wallet,
+  Zap,
 } from "lucide-react"
 
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
