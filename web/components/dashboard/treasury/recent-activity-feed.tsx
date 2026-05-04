@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { usePublicClient, useWatchContractEvent } from "wagmi";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { usePublicClient } from "wagmi";
 import { decodeEventLog } from "viem";
 import { cn, formatEth } from "@/lib/utils";
 import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
@@ -25,21 +25,35 @@ export function RecentActivityFeed() {
   const [isLoading, setIsLoading] = useState(true);
   const contractConfig = getPayrollContractConfig();
   const publicClient = usePublicClient();
+  const lastFetchedBlock = useRef<bigint>(0n);
 
-  const fetchRecentEvents = useCallback(async () => {
+  const fetchRecentEvents = useCallback(async (isInitial = false) => {
     if (!publicClient || !contractConfig) return;
 
     try {
       const currentBlock = await publicClient.getBlockNumber();
-      const fromBlock = currentBlock - 10000n > (contractConfig.fromBlock || 0n) 
-        ? currentBlock - 10000n 
-        : (contractConfig.fromBlock || 0n);
+      
+      // If it's the initial fetch, look back 10k blocks. 
+      // Otherwise, only fetch from the last block we saw + 1.
+      const fromBlock = isInitial 
+        ? (currentBlock - 10000n > (contractConfig.fromBlock || 0n) 
+            ? currentBlock - 10000n 
+            : (contractConfig.fromBlock || 0n))
+        : lastFetchedBlock.current + 1n;
+
+      if (fromBlock > currentBlock && !isInitial) return;
 
       const logs = await publicClient.getLogs({
         address: contractConfig.address,
         fromBlock,
         toBlock: currentBlock,
       });
+
+      if (logs.length === 0) {
+        if (isInitial) setIsLoading(false);
+        lastFetchedBlock.current = currentBlock;
+        return;
+      }
 
       const parsedEvents: TreasuryEvent[] = [];
 
@@ -90,79 +104,38 @@ export function RecentActivityFeed() {
         }
       }
 
-      setEvents(parsedEvents.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10));
+      setEvents(prev => {
+        const combined = isInitial ? parsedEvents : [...parsedEvents, ...prev];
+        // Deduplicate and sort
+        const seenHashes = new Set();
+        return combined
+          .filter(e => {
+            const key = `${e.transactionHash}-${e.type}`;
+            if (seenHashes.has(key)) return false;
+            seenHashes.add(key);
+            return true;
+          })
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 10);
+      });
+      
+      lastFetchedBlock.current = currentBlock;
     } catch (error) {
       console.error("Error fetching events:", error);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
   }, [publicClient, contractConfig]);
 
   useEffect(() => {
-    fetchRecentEvents();
+    fetchRecentEvents(true);
+
+    const interval = setInterval(() => {
+      fetchRecentEvents(false);
+    }, 30_000); // Poll every 30 seconds
+
+    return () => clearInterval(interval);
   }, [fetchRecentEvents]);
-
-  useWatchContractEvent({
-    address: contractConfig?.address,
-    abi: payrollAbi,
-    eventName: "TreasuryFunded",
-    onLogs: async (logs) => {
-      for (const log of logs) {
-        const block = await publicClient?.getBlock({ blockNumber: log.blockNumber! });
-        const newEvent: TreasuryEvent = {
-          type: "TreasuryFunded",
-          from: (log as any).args.from,
-          recipient: contractConfig!.address,
-          amount: (log as any).args.amount,
-          timestamp: block ? Number(block.timestamp) : Date.now() / 1000,
-          blockNumber: log.blockNumber!,
-          transactionHash: log.transactionHash!,
-        };
-        setEvents(prev => [newEvent, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10));
-      }
-    },
-  });
-
-  useWatchContractEvent({
-    address: contractConfig?.address,
-    abi: payrollAbi,
-    eventName: "Claimed",
-    onLogs: async (logs) => {
-      for (const log of logs) {
-        const block = await publicClient?.getBlock({ blockNumber: log.blockNumber! });
-        const newEvent: TreasuryEvent = {
-          type: "Claimed",
-          worker: (log as any).args.worker,
-          recipient: (log as any).args.recipient,
-          amount: (log as any).args.amount,
-          timestamp: block ? Number(block.timestamp) : Date.now() / 1000,
-          blockNumber: log.blockNumber!,
-          transactionHash: log.transactionHash!,
-        };
-        setEvents(prev => [newEvent, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10));
-      }
-    },
-  });
-
-  useWatchContractEvent({
-    address: contractConfig?.address,
-    abi: payrollAbi,
-    eventName: "ExcessWithdrawn",
-    onLogs: async (logs) => {
-      for (const log of logs) {
-        const block = await publicClient?.getBlock({ blockNumber: log.blockNumber! });
-        const newEvent: TreasuryEvent = {
-          type: "ExcessWithdrawn",
-          recipient: (log as any).args.recipient,
-          amount: (log as any).args.amountWei,
-          timestamp: block ? Number(block.timestamp) : Date.now() / 1000,
-          blockNumber: log.blockNumber!,
-          transactionHash: log.transactionHash!,
-        };
-        setEvents(prev => [newEvent, ...prev].sort((a, b) => b.timestamp - a.timestamp).slice(0, 10));
-      }
-    },
-  });
 
   const renderEvent = (event: TreasuryEvent) => {
     const isFunded = event.type === "TreasuryFunded";

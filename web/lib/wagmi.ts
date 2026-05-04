@@ -16,7 +16,7 @@ export const wagmiConfig = getDefaultConfig({
   chains: [hoodi, localhost],
   wallets,
   transports: {
-    [hoodi.id]: http(process.env.NEXT_PUBLIC_HOODI_RPC_URL ?? hoodi.rpcUrls.default.http[0]),
+    [hoodi.id]: http(process.env.NEXT_PUBLIC_HOODI_RPC_URL),
     [localhost.id]: http(),
   },
   ssr: true,

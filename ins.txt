@@ -1,354 +1,52 @@
-
-## Context & Tech Stack
-
-Check ../contracts/src/* for the contract if you need to verify anything, if you want the abi, you can compile it, I use foundry then re import the abi or do it the way you want but communicate what you did
----
-
-## Change 1 — `proposeTerms` ABI Change (BREAKING — fix first)
-
-The `proposeTerms` function signature has changed. It now takes a `proposalNote` string as the last parameter:
-
-```solidity
-// OLD — will revert if called
-function proposeTerms(
-    address workerAddr,
-    Timeline timeline,
-    uint256 amountPerIntervalWei,
-    uint256 customIntervalSeconds,
-    bool terminateOnReject
-)
-
-// NEW — correct signature
-function proposeTerms(
-    address workerAddr,
-    Timeline timeline,
-    uint256 amountPerIntervalWei,
-    uint256 customIntervalSeconds,
-    bool terminateOnReject,
-    string calldata proposalNote
-)
-```
-
-The `TermsProposed` event also has a new field:
-
-```solidity
-event TermsProposed(
-    address indexed worker,
-    Timeline timeline,
-    uint256 amountPerIntervalWei,
-    uint256 intervalSeconds,
-    bool terminateOnReject,
-    uint256 expiryTimestamp,
-    string proposalNote  // NEW
-)
-```
-
-**Implementation:**
-
-**Propose Terms Modal (Admin):**
-- Add a textarea field at the bottom of the modal — label: "Note to worker (optional)"
-- Placeholder: "Explain the reason for this proposal, include any relevant links..."
-- No character limit enforced on frontend — contract accepts any string
-- If operator leaves it blank pass `""` as the argument — do not block submission
-- Wire the textarea value as the last argument in the `proposeTerms` wagmi write call
-
-**Proposals Page — Active Proposals Table:**
-
-- Read `proposalNote` from the `TermsProposed` event log for each proposal
-- Fetch using `getLogs` filtered by the `TermsProposed` event and the worker address
-- If `proposalNote` is non-empty: show it as a collapsible row below the proposal — "📝 Note: [text]"
-- If empty: show nothing — do not render an empty note row
-
-**Worker Dashboard — Pending Proposal Card:**
-- Read `proposalNote` from the same `TermsProposed` event
-- Render it prominently on the proposal card so the worker understands why terms are changing
-- Style as a blockquote or info box — label: "Message from operator"
-- If empty: do not render the message box
+The error is clear — `eth_newFilter` is a stateful method and `rpc.hoodi.ethpandaops.io` is a load-balanced RPC that routes requests across multiple nodes. Stateful methods like `eth_newFilter` require hitting the same node every time because the filter state lives on a specific node — when your next request hits a different node it has no idea what filter you're talking about.
 
 ---
 
-## Change 2 — Claimable Display (Theoretical vs Actual)
+**Methods that have this problem:**
+```
+eth_newFilter
+eth_newBlockFilter
+eth_getFilterChanges
+eth_getFilterLogs
+eth_uninstallFilter
+```
 
-The contract now pays `min(accruedWei, treasury balance)` instead of hard reverting. The UI must surface the real claimable amount.
+---
 
-**Core logic — implement this wherever claimable is displayed:**
+**The fix — stop using filters, use `eth_getLogs` instead:**
+
+`eth_getLogs` is stateless — you pass the full query every time, no filter ID needed, works fine with load-balanced RPCs.
+
+In viem/wagmi replace any `watchContractEvent` or filter-based calls with:
 
 ```js
-import { formatEther } from 'viem'
-import { useBalance, useReadContract } from 'wagmi'
-
-const { data: theoreticalWei } = useReadContract({
-  address: CONTRACT_ADDRESS,
-  abi: ABI,
-  functionName: 'claimable',
-  args: [workerAddress],
-  query: { refetchInterval: 30_000 }
-})
-
-const { data: treasuryBalance } = useBalance({
-  address: CONTRACT_ADDRESS,
-  query: { refetchInterval: 30_000 }
-})
-
-const theoretical = theoreticalWei ?? 0n
-const treasury = treasuryBalance?.value ?? 0n
-const isSolvent = treasury >= theoretical
-const actualClaimable = isSolvent ? theoretical : treasury
-const shortfall = isSolvent ? 0n : theoretical - treasury
-const isEmpty = treasury === 0n
-```
-
-**Worker Dashboard — Claimable Card:**
-
-Three states:
-
-State 1 — Solvent (`isSolvent = true`):
-```
-Claimable
-X.XXXX ETH
-
-✓ Treasury can cover this claim    ← small green text, 12px
-
-[Claim X.XXXX ETH]                 ← enabled, shows full amount
-```
-
-State 2 — Partial (`!isSolvent && !isEmpty`):
-```
-Claimable
-X.XXXX ETH                         ← theoretical, always shown as headline
-
-┌─────────────────────────────────┐
-│ ⚠ Treasury can only cover       │
-│   Y.YYYY ETH right now          │  ← amber warning box
-│   Shortfall: Z.ZZZZ ETH         │
-└─────────────────────────────────┘
-
-[Claim Y.YYYY ETH]                  ← shows ACTUAL claimable (treasury balance)
-```
-
-State 3 — Empty (`isEmpty = true`):
-```
-Claimable
-X.XXXX ETH
-
-✗ Treasury is empty — claim will fail   ← red text
-
-[Claim Now]                              ← DISABLED, greyed out
-```
-
-Implementation details:
-- Headline always shows `theoretical` — worker should know their full earned amount
-- Button label shows `actualClaimable` — what they will actually receive
-- Button disabled only when `isEmpty = true`
-- Warning box only renders when `!isSolvent`
-- After successful claim: immediately refetch both `claimable` and `treasuryBalance`
-- `claim()` takes no arguments — the contract calculates internally
-
-**Admin Workers Table — Claimable Column:**
-
-Fetch `CONTRACT_ADDRESS` balance ONCE at page level using `useBalance`. Pass as prop to each row. Do NOT fetch inside individual row components.
-
-Per row display:
-
-```js
-const rowTheoretical = claimableResults[index]
-const isSolvent = treasuryBalance >= rowTheoretical
-const isEmpty = treasuryBalance === 0n
-```
-
-Solvent:
-```
-X.XXXX ETH
-Lifetime: Y.YYYY ETH    ← dim, from totalClaimedWei
-```
-
-Partial — amber warning icon inline:
-```
-X.XXXX ETH ⚠
-Lifetime: Y.YYYY ETH
-
-Tooltip: "Treasury can only cover A.AAAA ETH of this claim. Shortfall: B.BBBB ETH"
-```
-
-Empty — red X icon inline:
-```
-X.XXXX ETH ✕
-Lifetime: Y.YYYY ETH
-
-Tooltip: "Treasury is empty — this claim will fail"
-```
-
-**Admin Overview — Low Runway Workers Card:**
-
-Add a dim sub-stat below the main count:
-
-```
-Low Runway Workers
-3 workers
-
-2 workers cannot be fully paid now    ← new dim sub-stat, amber color
-```
-
-"Cannot be fully paid" = workers where `claimable(addr) > contractBalance`. Calculate alongside the existing low runway check.
-
----
-
-## Change 3 — Emergency Controls UI
-
-Two new contract functions need UI surfaces:
-
-```solidity
-bool public emergencyPaused;
-function setEmergencyPause(bool paused) external onlyOwner
-function emergencyDrain() external onlyOwner
-```
-
-**Admin Treasury Page — Emergency Controls Section:**
-
-Add a new section at the bottom of the Treasury page, clearly separated from normal controls:
-
-```
-┌─────────────────────────────────────────┐
-│ ⚠ Emergency Controls        Owner only  │
-│                                         │
-│ These actions are irreversible.         │
-│ Use only in critical protocol failure.  │
-│                                         │
-│ Emergency Pause                         │
-│ [Toggle: OFF / ON]                      │
-│ "Pauses all worker claims immediately"  │
-│                                         │
-│ Emergency Drain                         │
-│ "Send entire treasury balance to your   │
-│  wallet, bypassing all reserves"        │
-│ [Drain Treasury →]  ← red button        │
-└─────────────────────────────────────────┘
-```
-
-- Section has a red-tinted border or left border to signal danger
-- Both controls show `Owner only` badge — disable with tooltip if connected wallet is admin but not owner
-- `emergencyDrain` button requires a confirmation dialog before executing:
-  > "This will send the entire treasury balance (X.XXXX ETH) to your wallet (0x1234...abcd). All worker claims will be unfunded. This cannot be undone."
-  - Confirm button is red, labeled "Drain Treasury"
-  - Cancel button is neutral
-- After `emergencyDrain` succeeds: refetch treasury balance, show success toast "Treasury drained — X.XXXX ETH sent to your wallet"
-- After `setEmergencyPause(true)` succeeds: show toast "Protocol paused — worker claims disabled"
-- After `setEmergencyPause(false)` succeeds: show toast "Protocol resumed — worker claims enabled"
-- Read current `emergencyPaused` state using `useReadContract` on `emergencyPaused()` with `refetchInterval: 10_000`
-
-**Global Emergency Banner:**
-
-Read `emergencyPaused` state in the root layout. When `true`:
-
-Admin layout:
-- Render a fixed red banner at the very top of every admin page, above the navbar:
-```
-🔴 Protocol is paused — all worker claims are currently disabled   [Resume →]
-```
-- "Resume →" calls `setEmergencyPause(false)` — only shown to owner, hidden for admins
-
-Worker dashboard:
-- Replace the Claim button entirely with:
-```
-[Protocol paused — claims disabled]   ← grey, disabled button
-```
-- Add a dim note below: "The operator has paused the protocol. Claims will resume when the operator lifts the pause."
-
----
-
-## Change 4 — Runway Tooltip
-
-`treasuryRunway()` now returns a stricter number because it subtracts total `accruedWei` across all workers from the balance before dividing. Operators will notice runway numbers drop without understanding why. Add a tooltip everywhere runway is displayed.
-
-Tooltip text (use consistently across all surfaces):
-> "Free balance only — ETH already owed to workers as accrued balances is excluded. This reflects funds actually available to sustain future payroll."
-
-Apply to:
-- Admin Overview — Runway stat card
-- Admin Treasury page — Runway stat card
-- Admin Workers table — Runway column header and per-cell values
-- Worker Dashboard — Worker Runway card
-
-Use a small `ⓘ` icon next to the runway label that shows the tooltip on hover (desktop) or tap (mobile).
-
----
-
-## Data Fetching Notes
-
-```js
-// Fetch treasury balance ONCE at page level — reuse across all components
-const { data: treasuryBalance, refetch: refetchTreasury } = useBalance({
-  address: CONTRACT_ADDRESS,
-  query: { refetchInterval: 30_000 }
-})
-
-// Batch all claimable reads
-const claimableResults = useReadContracts({
-  contracts: workerAddresses.map(addr => ({
-    address: CONTRACT_ADDRESS,
-    abi: ABI,
-    functionName: 'claimable',
-    args: [addr],
-  })),
-  query: { refetchInterval: 30_000 }
-})
-
-// Emergency pause state — poll faster since it's critical
-const { data: emergencyPaused } = useReadContract({
-  address: CONTRACT_ADDRESS,
-  abi: ABI,
-  functionName: 'emergencyPaused',
-  query: { refetchInterval: 10_000 }
-})
-
-// Read proposalNote from TermsProposed event logs
 const logs = await publicClient.getLogs({
   address: CONTRACT_ADDRESS,
-  event: parseAbiItem('event TermsProposed(address indexed worker, uint8 timeline, uint256 amountPerIntervalWei, uint256 intervalSeconds, bool terminateOnReject, uint256 expiryTimestamp, string proposalNote)'),
-  args: { worker: workerAddress },
-  fromBlock: 'earliest'
+  event: parseAbiItem('event TermsProposed(address indexed worker, ...)'),
+  fromBlock: DEPLOY_BLOCK,
+  toBlock: 'latest'
 })
-const proposalNote = logs[logs.length - 1]?.args?.proposalNote ?? ''
 ```
 
-After any write transaction refetch relevant data immediately:
+Or if you're using wagmi's `useWatchContractEvent` — replace it with a polling approach:
+
 ```js
-// After claim
-await Promise.all([refetchClaimable(), refetchTreasury()])
-
-// After proposeTerms
-await Promise.all([refetchProposals(), refetchWorkers()])
-
-// After emergencyDrain
-await refetchTreasury()
-
-// After setEmergencyPause
-await refetchEmergencyPaused()
+// Poll every 30 seconds instead of using a filter
+const { data: logs } = useReadContract({
+  ...
+  query: { refetchInterval: 30_000 }
+})
 ```
 
 ---
 
-## ABI Update Reminder
+**Alternative — use a different RPC:**
 
-Before implementing any of the above, update the contract ABI file in the frontend project. The following have changed:
+If you need real-time event watching, use an RPC that supports stateful methods:
 
-- `proposeTerms` — new `string proposalNote` parameter
-- `TermsProposed` event — new `string proposalNote` field
-- `emergencyPaused` — new public bool getter
-- `setEmergencyPause(bool)` — new function
-- `emergencyDrain()` — new function
-- `treasuryRunway()` — same signature, different internal behavior (no ABI change needed but frontend behavior changes)
-- `_claimTo` internal change — `claim()` and `claimTo()` signatures unchanged, behavior changed (no ABI change needed)
+- Alchemy — free tier, supports Hoodi testnet
+- Infura — same
+- QuickNode — same
 
----
-
-## What NOT To Do
-
-- Do not call `proposeTerms` without the `proposalNote` argument — it will revert
-- Do not fetch treasury balance inside individual worker row components — fetch once at page level
-- Do not disable the Claim button when `!isSolvent` — only disable when `isEmpty`
-- Do not show the shortfall warning on the happy path — only render when `!isSolvent`
-- Do not show the theoretical amount on the Claim button — show actual claimable
-- Do not show Emergency Controls to admin wallets — owner only
-- Do not skip the confirmation dialog on `emergencyDrain` — it is irreversible
+These give you a dedicated endpoint that always hits the same node so stateful methods work fine. For Hoodi specifically Alchemy has it under their testnet options.
 
