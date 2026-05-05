@@ -1,4 +1,4 @@
-
+y
 I’m checking ins.txt now and will compare it against the
   workspace to identify the concrete fixable items. After that I’ll
   summarize what looks broken and what I’d change.
