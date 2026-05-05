@@ -24,7 +24,7 @@ interface StatCardProps {
 
 const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassName }: StatCardProps) => {
   const content = (
-    <Card className={cn("flex-1 shadow-sm", cardClassName)}>
+    <Card className={cn("flex-1 shadow-sm overflow-x-hidden", cardClassName)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>

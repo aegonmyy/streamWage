@@ -111,7 +111,7 @@ function StatCard({
 }) {
   return (
     <Card 
-      className={cn("rounded-[12px] md:rounded-2xl transition-all", danger && "border-destructive/40 bg-destructive/5", className)}
+      className={cn("rounded-[12px] md:rounded-2xl transition-all overflow-x-hidden", danger && "border-destructive/40 bg-destructive/5", className)}
       onClick={onClick}
     >
       <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">

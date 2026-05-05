@@ -2,7 +2,6 @@
 
 import { useMemo, useCallback } from "react";
 import { useBalance, useReadContract } from "wagmi";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { TreasuryPageHeader } from "@/components/dashboard/treasury/treasury-page-header";
 import { TreasuryStatCards } from "@/components/dashboard/treasury/treasury-stat-cards";
 import { TreasuryActionsActivity } from "@/components/dashboard/treasury/treasury-actions-activity";
@@ -46,7 +45,7 @@ export default function TreasuryPage() {
   }, [refetchBalance, refetchTreasuryRunway]);
 
   return (
-    <DashboardShell>
+    <>
       <TreasuryPageHeader />
       <TreasuryStatCards />
       <TreasuryActionsActivity
@@ -55,6 +54,6 @@ export default function TreasuryPage() {
         refetchTreasuryData={refetchTreasuryData}
       />
       <WorkerDrainBreakdownTable />
-    </DashboardShell>
+    </>
   );
 }

@@ -247,7 +247,7 @@ function StatCard({
   danger?: boolean
 }) {
   const content = (
-    <Card className={cn(danger && "border-destructive/40 bg-destructive/5 shadow-sm")}>
+    <Card className={cn("overflow-x-hidden", danger && "border-destructive/40 bg-destructive/5 shadow-sm")}>
       <CardHeader className="pb-2">
         <CardDescription className="text-xs font-medium uppercase tracking-wider">{title}</CardDescription>
         <CardTitle className="text-2xl font-bold tracking-tight">{value}</CardTitle>
