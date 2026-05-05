@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 
 export function WorkerDrainBreakdownTable() {
   const { data: adminData, isLoading } = usePayrollAdminData();
@@ -51,8 +52,9 @@ export function WorkerDrainBreakdownTable() {
           <CardTitle>Payroll Drain Breakdown</CardTitle>
           <CardDescription>Loading worker data...</CardDescription>
         </CardHeader>
-        <CardContent className="h-40 flex items-center justify-center">
-          <div className="text-muted-foreground animate-pulse">Fetching active workers...</div>
+        <CardContent className="h-48 flex flex-col items-center justify-center space-y-4">
+          <LottieAnimation className="h-32 w-32" />
+          <div className="text-muted-foreground animate-pulse text-sm">Fetching active workers...</div>
         </CardContent>
       </Card>
     );

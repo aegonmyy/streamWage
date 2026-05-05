@@ -6,6 +6,7 @@ import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { getDashboardPathForRole } from "@/lib/dashboard-role"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { Wallet } from "lucide-react"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
 
 export default function DashboardIndexPage() {
   const { role, isConnected, isLoading, isDevMode } = usePayrollRole()
@@ -20,7 +21,10 @@ export default function DashboardIndexPage() {
   return (
     <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-32 text-center">
       {isLoading ? (
-        <p className="text-sm text-muted-foreground animate-pulse">Checking wallet permissions…</p>
+        <div className="space-y-4">
+          <LottieAnimation className="h-40 w-40 mx-auto" />
+          <p className="text-sm text-muted-foreground animate-pulse">Checking wallet permissions…</p>
+        </div>
       ) : (isConnected || isDevMode) ? (
         <p className="text-sm text-muted-foreground">Opening dashboard…</p>
       ) : (

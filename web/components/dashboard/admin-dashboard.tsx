@@ -28,6 +28,7 @@ import {
   Zap,
 } from "lucide-react"
 import { toast } from "sonner"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { useAccount, useWaitForTransactionReceipt } from "wagmi"
 import { formatEther, getAddress, isAddress, parseEther, type Address } from "viem"
 import { Badge } from "@/components/ui/badge"
@@ -878,12 +879,14 @@ export function AdminDashboard() {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-          Loading payroll state from chain…
+        <div className="mx-auto max-w-6xl px-4 py-16 text-center text-sm text-muted-foreground sm:px-6">
+          <LottieAnimation className="h-40 w-40 mx-auto" />
+          <p className="mt-4 animate-pulse">Loading admin data from chain…</p>
         </div>
       </AdminLayout>
     )
   }
+
 
   if (isError || !data) {
     return (

@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import {
   Zap,
   ChevronRight,
@@ -10,12 +10,19 @@ import {
   User,
   Wallet,
   HelpCircle,
+  Menu,
+  X,
+  LogOut,
 } from "lucide-react"
 
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarHeader } from "@/components/ui/sidebar"
 import { SidebarNav } from "@/components/dashboard/sidebar-nav"
 import { usePayrollWorkerData } from "@/hooks/use-payroll-worker-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
+import { useAccount, useDisconnect } from "wagmi"
+import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
+import { LottieAnimation } from "@/components/ui/lottie-animation"
 
 const SIDEBAR_ITEMS = [
   { id: "overview", label: "Overview", description: "Your claimable balance and status.", icon: LayoutDashboard, href: "/dashboard/worker" },
@@ -28,7 +35,12 @@ const SIDEBAR_ITEMS = [
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { data } = usePayrollWorkerData()
-  const { isConnected, isLoading, isDevMode } = usePayrollRole()
+  const { isConnected, isLoading, isDevMode, isAdmin } = usePayrollRole()
+  const { address } = useAccount()
+  const { disconnect } = useDisconnect()
+  const { toast } = useToast()
+
+  const [isNavOpen, setIsNavOpen] = useState(false)
 
   // Redirect if not connected
   useEffect(() => {
@@ -38,6 +50,18 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     }
   }, [isConnected, isDevMode, isLoading, router])
 
+  // Prevent background scroll when nav is open
+  useEffect(() => {
+    if (isNavOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = "unset"
+    }
+    return () => {
+      document.body.style.overflow = "unset"
+    }
+  }, [isNavOpen])
+
   const searchParams = useSearchParams()
   const currentSection = searchParams.get("section") || "overview"
 
@@ -45,6 +69,28 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     const item = SIDEBAR_ITEMS.find(i => i.id === id)
     if (item?.href) {
       router.push(item.href)
+      setIsNavOpen(false)
+    }
+  }
+
+  const handleDisconnect = () => {
+    disconnect()
+    router.push("/dashboard")
+    setIsNavOpen(false)
+  }
+
+  const formatAddress = (addr?: string) => {
+    if (!addr) return ""
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`
+  }
+
+  const copyAddress = () => {
+    if (address) {
+      navigator.clipboard.writeText(address)
+      toast({
+        title: "Copied!",
+        description: "Address copied to clipboard",
+      })
     }
   }
 
@@ -52,7 +98,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     return (
       <div className="flex h-[80vh] items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          <LottieAnimation className="h-40 w-40 mx-auto" />
           <p className="text-sm text-muted-foreground font-medium">Loading worker dashboard...</p>
         </div>
       </div>
@@ -61,6 +107,89 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
 
   return (
     <SidebarProvider>
+      {/* Mobile Top Bar */}
+      <div className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b bg-card px-4 md:hidden">
+        <div className="flex items-center gap-2">
+          <Zap className="h-8 w-8 text-amber-500" />
+          <div className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+            isAdmin ? "bg-blue-500/10 text-blue-600" : "bg-amber-500/10 text-amber-600"
+          )}>
+            {isAdmin ? "Admin" : "Worker"}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={copyAddress}
+            className="rounded-md bg-muted px-2 py-1 font-mono text-xs hover:bg-muted/80 active:scale-95 transition-transform"
+          >
+            {formatAddress(address)}
+          </button>
+          
+          <button 
+            onClick={() => setIsNavOpen(!isNavOpen)}
+            className={cn(
+              "relative z-50 p-1 transition-transform duration-200",
+              isNavOpen && "rotate-90"
+            )}
+          >
+            {isNavOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Nav Drawer */}
+      <div className={cn(
+        "fixed inset-0 z-30 md:hidden transition-opacity duration-200",
+        isNavOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+      )}>
+        <div 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+          onClick={() => setIsNavOpen(false)}
+        />
+        <div className={cn(
+          "absolute top-14 left-0 w-full bg-card border-b shadow-xl transition-all duration-250 ease-in-out",
+          isNavOpen ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
+        )}>
+          <nav className="flex flex-col p-2">
+            {SIDEBAR_ITEMS.map((item) => {
+              const Icon = item.icon
+              const isActive = currentSection === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSectionChange(item.id)}
+                  className={cn(
+                    "flex h-12 w-full items-center justify-between rounded-lg px-4 transition-colors",
+                    isActive ? "bg-amber-500/10 text-amber-600" : "hover:bg-muted"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-5 w-5" />
+                    <span className="font-medium">{item.label}</span>
+                    {item.id === "proposals" && data?.pendingProposal && (
+                      <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                    )}
+                  </div>
+                  <ChevronRight className="h-4 w-4 opacity-50" />
+                </button>
+              )
+            })}
+            
+            <div className="my-2 border-t" />
+            
+            <button
+              onClick={handleDisconnect}
+              className="flex h-12 w-full items-center gap-3 rounded-lg px-4 text-red-500 hover:bg-red-500/5 transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span className="font-medium">Disconnect</span>
+            </button>
+          </nav>
+        </div>
+      </div>
+
       <div className="relative mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
         <Sidebar collapsible="icon" className="xl:sticky xl:top-24 xl:self-start">
           <SidebarTrigger className="absolute -right-3 top-20 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
@@ -89,7 +218,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           </div>
         </Sidebar>
 
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 mt-0 md:mt-0 pt-14 md:pt-0">
           {children}
         </main>
       </div>

@@ -1,52 +1,98 @@
-The error is clear — `eth_newFilter` is a stateful method and `rpc.hoodi.ethpandaops.io` is a load-balanced RPC that routes requests across multiple nodes. Stateful methods like `eth_newFilter` require hitting the same node every time because the filter state lives on a specific node — when your next request hits a different node it has no idea what filter you're talking about.
+You are fixing the mobile navigation for the **StreamWage Worker Dashboard**. Currently on mobile the top bar is missing entirely — no logo, no wallet address, no role badge, no navigation. Fix this and implement a top hamburger menu that expands sections downward.
 
 ---
 
-**Methods that have this problem:**
+## Fix 1 — Mobile Top Bar
+
+Add a sticky top bar visible only on mobile (`flex md:hidden`). It should be `56px` tall and contain:
+
 ```
-eth_newFilter
-eth_newBlockFilter
-eth_getFilterChanges
-eth_getFilterLogs
-eth_uninstallFilter
+[⚡ Logo]   [Worker badge]   [0x92...6c4B]   [☰]
+```
+
+- **Logo**: StreamWage lightning bolt icon, `32px`, left aligned
+- **Worker/Admin badge**: pill showing current role — amber for Worker, blue for Admin
+- **Wallet address**: shortened `0x1234...abcd`, tappable to copy full address to clipboard, shows a brief "Copied!" toast on tap
+- **Hamburger icon**: `☰` far right, `24px`, toggles the nav drawer
+- Background: white / card color, subtle bottom border
+- `position: sticky`, `top: 0`, `z-index: 40`
+
+---
+
+## Fix 2 — Hamburger Nav Drawer (expands downward from top bar)
+
+When the hamburger is tapped a nav drawer slides down from the top bar — not a bottom sheet, not a sidebar. It drops down like a dropdown attached to the top bar.
+
+**Behavior:**
+- Drawer sits directly below the top bar
+- Slides down with `transition: transform 250ms ease` from `translateY(-100%)` to `translateY(0)`
+- Has a dark overlay behind it covering the rest of the page
+- Tapping the overlay closes the drawer
+- Tapping any nav item navigates and closes the drawer
+- Hamburger icon rotates to `✕` when open, back to `☰` when closed
+
+**Drawer contents — full width, card background:**
+
+Each nav item as a full-width row:
+
+```
+[Icon]  Overview          →
+[Icon]  Proposals         →   ← amber dot if pending proposal
+[Icon]  Earnings          →
+[Icon]  Profile           →
+[Icon]  Support           →
+────────────────────────────
+[Icon]  Disconnect        ← red text
+```
+
+- Each row: `48px` tall, icon left, label, chevron right
+- Active section row gets a subtle highlight background
+- Proposals row shows a small amber dot indicator if `data?.pendingProposal` exists
+- Disconnect row calls `useDisconnect` and navigates to `/dashboard`
+- Separator line above Disconnect
+
+**Animation:**
+```css
+/* Closed */
+transform: translateY(-110%);
+opacity: 0;
+
+/* Open */
+transform: translateY(0);
+opacity: 1;
+
+transition: transform 250ms ease, opacity 200ms ease;
 ```
 
 ---
 
-**The fix — stop using filters, use `eth_getLogs` instead:**
 
-`eth_getLogs` is stateless — you pass the full query every time, no filter ID needed, works fine with load-balanced RPCs.
-
-In viem/wagmi replace any `watchContractEvent` or filter-based calls with:
-
-```js
-const logs = await publicClient.getLogs({
-  address: CONTRACT_ADDRESS,
-  event: parseAbiItem('event TermsProposed(address indexed worker, ...)'),
-  fromBlock: DEPLOY_BLOCK,
-  toBlock: 'latest'
-})
-```
-
-Or if you're using wagmi's `useWatchContractEvent` — replace it with a polling approach:
-
-```js
-// Poll every 30 seconds instead of using a filter
-const { data: logs } = useReadContract({
-  ...
-  query: { refetchInterval: 30_000 }
-})
-```
 
 ---
 
-**Alternative — use a different RPC:**
+## Fix 4 — Page Content Padding
 
-If you need real-time event watching, use an RPC that supports stateful methods:
+When the sticky top bar is added, the page content needs top padding on mobile to avoid being hidden behind it:
 
-- Alchemy — free tier, supports Hoodi testnet
-- Infura — same
-- QuickNode — same
+```tsx
+<main className="flex-1 min-w-0 mt-0 md:mt-0 pt-14 md:pt-0">
+```
 
-These give you a dedicated endpoint that always hits the same node so stateful methods work fine. For Hoodi specifically Alchemy has it under their testnet options.
+`pt-14` = `56px` to match the top bar height exactly.
+
+---
+
+## Implementation Notes
+
+- Use `useState` for `isNavOpen` boolean
+- Use `useEffect` to add `document.body.style.overflow = 'hidden'` when open and restore when closed — prevents background scrolling while drawer is open
+- Use `usePathname` and `useSearchParams` to determine active section for highlighting
+- Role badge reads from `usePayrollRole()` — `isAdmin` boolean determines Worker vs Admin label
+- Wallet address reads from `useAccount()` — format as `0x1234...abcd`
+- All changes scoped to `worker-layout-shell.tsx` — do not touch desktop layout
+- Apply `md:hidden` to mobile top bar and drawer, `hidden md:flex` to desktop sidebar
+
+
+If you're done implement the same thing for admin dashboard 
+---
 
