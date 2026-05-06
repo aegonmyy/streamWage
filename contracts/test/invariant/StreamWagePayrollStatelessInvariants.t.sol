@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {StreamWagePayroll} from "../../src/StreamWagePayroll.sol";
 
@@ -15,8 +16,7 @@ contract StreamWagePayrollStatelessInvariants is Test {
     address internal triggerWorker = address(0x4444);
 
     function setUp() public {
-        vm.prank(owner);
-        payroll = new StreamWagePayroll(owner);
+        payroll = _deployPayroll(owner);
 
         vm.prank(owner);
         payroll.setAdmin(admin, true);
@@ -116,5 +116,14 @@ contract StreamWagePayrollStatelessInvariants is Test {
         if (!active || timeline == StreamWagePayroll.Timeline.Trigger) {
             assertEq(claimableAmount, accrued);
         }
+    }
+
+    function _deployPayroll(address initialOwner) internal returns (StreamWagePayroll proxyInstance) {
+        StreamWagePayroll implementation = new StreamWagePayroll();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            abi.encodeCall(StreamWagePayroll.initialize, (initialOwner))
+        );
+        proxyInstance = StreamWagePayroll(payable(address(proxy)));
     }
 }

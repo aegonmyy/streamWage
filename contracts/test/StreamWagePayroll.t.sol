@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Test} from "forge-std/Test.sol";
 import {StreamWagePayroll} from "../src/StreamWagePayroll.sol";
 
@@ -14,8 +15,7 @@ contract StreamWagePayrollTest is Test {
     address internal outsider = address(0x3333);
 
     function setUp() public {
-        vm.prank(owner);
-        payroll = new StreamWagePayroll(owner);
+        payroll = _deployPayroll(owner);
 
         vm.prank(owner);
         payroll.setAdmin(admin, true);
@@ -84,15 +84,19 @@ contract StreamWagePayrollTest is Test {
         payroll.addWorker(worker1, StreamWagePayroll.Timeline.Hourly, 1 ether, 0, "nope");
     }
 
-    function test_InsufficientTreasuryRevertsClaim() public {
+    function test_InsufficientTreasuryPaysPartialClaim() public {
         vm.prank(admin);
         payroll.addWorker(worker1, StreamWagePayroll.Timeline.Hourly, 50 ether, 0, "expensive");
 
         vm.warp(block.timestamp + 1 hours);
 
         vm.prank(worker1);
-        vm.expectRevert(StreamWagePayroll.InsufficientTreasury.selector);
         payroll.claim();
+
+        assertEq(worker1.balance, 20 ether);
+        (,,,,, uint256 accruedWei, uint256 totalClaimedWei,,) = payroll.workers(worker1);
+        assertEq(accruedWei, 30 ether);
+        assertEq(totalClaimedWei, 20 ether);
     }
 
     function test_WorkerCanClaimToRecipient() public {
@@ -105,5 +109,19 @@ contract StreamWagePayrollTest is Test {
         payroll.claimTo(outsider);
 
         assertEq(outsider.balance, 1 ether);
+    }
+
+    function test_InitializeRevertsOnSecondCall() public {
+        vm.expectRevert();
+        payroll.initialize(owner);
+    }
+
+    function _deployPayroll(address initialOwner) internal returns (StreamWagePayroll proxyInstance) {
+        StreamWagePayroll implementation = new StreamWagePayroll();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            abi.encodeCall(StreamWagePayroll.initialize, (initialOwner))
+        );
+        proxyInstance = StreamWagePayroll(payable(address(proxy)));
     }
 }
