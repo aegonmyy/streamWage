@@ -241,7 +241,7 @@ export function WorkerDashboard() {
   const isProposalUrgent = !!data?.pendingProposal?.terminateOnReject
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
-  const hasIncomingMigrationAccess = data.incomingMigrationRequests.length > 0
+  const hasIncomingMigrationAccess = (data?.incomingMigrationRequests?.length ?? 0) > 0
   const recentTransactions = (Array.isArray(data?.recentActivity) ? data.recentActivity : [])
     .filter((item) => item.txHash)
     .slice(0, 4)

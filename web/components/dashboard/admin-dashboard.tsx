@@ -690,9 +690,6 @@ export function AdminDashboard() {
                 <p className="mobile-ellipsis-1 mt-1 font-mono text-sm font-semibold text-foreground">
                   {formatEth(safeWithdrawableWei, 4)} ETH
                 </p>
-                <p className="mobile-ellipsis-2 mt-1 text-xs text-muted-foreground">
-                  This mirrors the contract rule used by `withdrawExcess()`: current balance minus the enforced one-hour reserve.
-                </p>
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Input value={withdrawRecipient} onChange={(event) => setWithdrawRecipient(event.target.value)} placeholder="Recipient address" className="font-mono mobile-anywhere" />
