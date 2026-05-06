@@ -108,7 +108,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   return (
     <SidebarProvider>
       {/* Mobile Top Bar */}
-      <div className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b bg-card px-4 md:hidden">
+      <div className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b bg-card px-3 sm:px-4 md:hidden">
         <div className="flex items-center gap-2">
           <Zap className="h-8 w-8 text-amber-500" />
           <div className={cn(
@@ -120,9 +120,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         </div>
         
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={copyAddress}
-            className="rounded-md bg-muted px-2 py-1 font-mono text-xs hover:bg-muted/80 active:scale-95 transition-transform"
+            className="max-w-[7.5rem] truncate rounded-md bg-muted px-2 py-1 font-mono text-xs hover:bg-muted/80 active:scale-95 transition-transform"
           >
             {formatAddress(address)}
           </button>
@@ -190,7 +190,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         </div>
       </div>
 
-      <div className="relative mx-auto flex w-full max-w-7xl gap-6 px-4 py-8 sm:px-6">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row">
         <Sidebar collapsible="icon" className="xl:sticky xl:top-24 xl:self-start">
           <SidebarTrigger className="absolute -right-3 top-20 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
           
@@ -218,7 +218,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           </div>
         </Sidebar>
 
-        <main className="flex-1 min-w-0 mt-0 md:mt-0 pt-14 md:pt-0">
+        <main className="min-w-0 flex-1">
           {children}
         </main>
       </div>

@@ -8,7 +8,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const view: "worker" | "admin" = pathname?.includes("/dashboard/admin") ? "admin" : "worker"
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen overflow-x-hidden bg-background">
       <DashboardHeader view={view} />
       <div className="flex min-h-[calc(100vh-4rem)]">
         <main className="min-w-0 flex-1">{children}</main>
