@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 import {StreamWagePayroll} from "../src/StreamWagePayroll.sol";
@@ -16,9 +17,8 @@ import {StreamWagePayrollFactory} from "../src/StreamWagePayrollFactory.sol";
 ///        INITIAL_OWNER=0x... DEPLOY_MODE=factory forge script script/Deploy.s.sol:Deploy --rpc-url $RPC_URL --broadcast
 contract Deploy is Script {
     function run() external {
-        // Use vm.envUint and vm.envAddress to read from environment variables.
-        // Fallback to hardcoded values if not provided (keeping existing values as defaults).
-        uint256 deployerPrivateKey = vm.envOr("PRIVATE_KEY", uint256(0xe83bbb5223339d634ca6f0eb5225b9a0b611e3038a6eef7a44b66cab1b3907d5));
+        // Use environment variables for deployment credentials and configuration.
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address initialOwner = vm.envOr("INITIAL_OWNER", address(0xF44d83F39578ca49a4d3E994b51455527946822d));
         string memory mode = vm.envOr("DEPLOY_MODE", string("factory"));
 
@@ -28,7 +28,7 @@ contract Deploy is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         if (_eq(mode, "direct")) {
-            StreamWagePayroll payroll = new StreamWagePayroll(initialOwner);
+            StreamWagePayroll payroll = _deployPayrollProxy(initialOwner);
             console2.log("StreamWagePayroll deployed at:", address(payroll));
             _addInitialWorker(payroll);
         } else if (_eq(mode, "factory_only")) {
@@ -47,6 +47,15 @@ contract Deploy is Script {
         }
 
         vm.stopBroadcast();
+    }
+
+    function _deployPayrollProxy(address initialOwner) internal returns (StreamWagePayroll payroll) {
+        StreamWagePayroll implementation = new StreamWagePayroll();
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(implementation),
+            abi.encodeCall(StreamWagePayroll.initialize, (initialOwner))
+        );
+        payroll = StreamWagePayroll(payable(address(proxy)));
     }
 
     function _addInitialWorker(StreamWagePayroll payroll) internal {

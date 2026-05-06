@@ -2,6 +2,8 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
+import {IBeacon} from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
+import {UpgradeableBeacon} from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
 import {StreamWagePayroll} from "../src/StreamWagePayroll.sol";
 import {StreamWagePayrollFactory} from "../src/StreamWagePayrollFactory.sol";
 
@@ -13,6 +15,16 @@ contract StreamWagePayrollFactoryTest is Test {
 
     function setUp() public {
         factory = new StreamWagePayrollFactory();
+    }
+
+    function test_Constructor_DeploysImplementationAndBeacon() public {
+        address implementation = address(factory.implementation());
+        address beacon = address(factory.beacon());
+
+        assertTrue(implementation != address(0));
+        assertTrue(beacon != address(0));
+        assertEq(IBeacon(beacon).implementation(), implementation);
+        assertEq(UpgradeableBeacon(beacon).owner(), address(this));
     }
 
     function test_DeployPayroll_SetsOwnerAndEmits() public {
@@ -41,5 +53,19 @@ contract StreamWagePayrollFactoryTest is Test {
     function test_DeployPayroll_RevertsOnZeroOwner() public {
         vm.expectRevert(StreamWagePayroll.InvalidConfiguration.selector);
         factory.deployPayroll(address(0));
+    }
+
+    function test_ImplementationCannotBeInitialized() public {
+        StreamWagePayroll implementation = new StreamWagePayroll();
+
+        vm.expectRevert();
+        implementation.initialize(alice);
+    }
+
+    function test_DeployPayroll_UsesBeaconImplementation() public {
+        StreamWagePayroll payroll = factory.deployPayroll(alice);
+
+        assertEq(payroll.owner(), alice);
+        assertEq(IBeacon(address(factory.beacon())).implementation(), address(factory.implementation()));
     }
 }

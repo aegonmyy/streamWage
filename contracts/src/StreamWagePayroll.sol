@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 /// @title StreamWagePayroll
 /// @author StreamWage
 /// @notice Prefunded ETH payroll protocol with pull-based worker claims.
 /// @dev Supports hourly, monthly, custom interval, and trigger-based compensation models.
-contract StreamWagePayroll {
+contract StreamWagePayroll is Initializable {
     enum Timeline {
         Hourly,
         Monthly,
@@ -114,7 +116,14 @@ contract StreamWagePayroll {
         _;
     }
 
-    constructor(address initialOwner) {
+    /// @dev Locks the implementation contract so only proxies can initialize state.
+    constructor() {
+        _disableInitializers();
+    }
+
+    /// @notice Initializes payroll ownership for a freshly deployed instance.
+    /// @param initialOwner Owner of the payroll instance.
+    function initialize(address initialOwner) external initializer {
         if (initialOwner == address(0)) revert InvalidConfiguration();
         owner = initialOwner;
         emit OwnerTransferred(address(0), initialOwner);
@@ -172,7 +181,7 @@ contract StreamWagePayroll {
         Worker storage worker = workers[workerAddr];
         if (!worker.exists) revert InvalidWorker();
         if (worker.timeline != Timeline.Trigger && amountPerIntervalWei == 0) revert InvalidAmount();
-        _accrue(worker);
+        _settleAndReset(worker);
         worker.amountPerIntervalWei = amountPerIntervalWei;
         emit WorkerRateUpdated(workerAddr, amountPerIntervalWei);
     }
@@ -189,20 +198,7 @@ contract StreamWagePayroll {
         Worker storage worker = workers[workerAddr];
         if (!worker.exists) revert InvalidWorker();
         uint256 newIntervalSeconds = _resolveInterval(timeline, customIntervalSeconds);
-        _accrue(worker);
-        if (
-            newIntervalSeconds != worker.intervalSeconds &&
-            worker.intervalSeconds > 0 &&
-            worker.active &&
-            worker.timeline != Timeline.Trigger
-        ) {
-            uint256 elapsed = block.timestamp - uint256(worker.lastAccruedAt);
-            uint256 remainder = elapsed % worker.intervalSeconds;
-            if (remainder > 0) {
-                worker.accruedWei += (remainder * worker.amountPerIntervalWei) / worker.intervalSeconds;
-            }
-            worker.lastAccruedAt = uint64(block.timestamp);
-        }
+        _settleAndReset(worker);
 
         // *** CHANGED ***
         // If worker is inactive, reset lastAccruedAt to now so the paused
@@ -360,7 +356,7 @@ contract StreamWagePayroll {
             if (!w.active) continue;
             if (w.timeline == Timeline.Trigger) continue;
             if (w.intervalSeconds == 0) continue;
-            _accrue(w);
+            _settleAndReset(w);
             totalRatePerSecond += w.amountPerIntervalWei / w.intervalSeconds;
         }
         uint256 minimumReserve = totalRatePerSecond * 1 hours;
@@ -553,7 +549,7 @@ contract StreamWagePayroll {
         if (migration.newAddress != msg.sender) revert NotMigrationRecipient();
         if (workers[msg.sender].exists) revert WorkerAlreadyExists();
         Worker storage oldWorker = workers[oldAddress];
-        _accrue(oldWorker);
+        _settleAndReset(oldWorker);
         workers[msg.sender] = Worker({
             exists: true,
             active: oldWorker.active,
@@ -596,7 +592,7 @@ contract StreamWagePayroll {
     function _claimTo(address workerAddr, address recipient) internal returns (uint256 claimedAmount) {
         Worker storage worker = workers[workerAddr];
         if (!worker.exists) revert InvalidWorker();
-        _accrue(worker);
+        _settleAndReset(worker);
         if (worker.accruedWei == 0) revert NoClaimableBalance();
         if (address(this).balance == 0) revert InsufficientTreasury();
 
@@ -654,16 +650,15 @@ contract StreamWagePayroll {
     /// remainder for the partial interval the worker was mid-way through,
     /// then resets lastAccruedAt to block.timestamp.
     ///
-    /// Called at every pause site (setWorkerStatus, proposeTerms) to ensure:
+    /// Called before state changes that should lock in all earned time to ensure:
     /// 1. No earned time is lost — fractional remainder is paid pro-rata.
-    /// 2. No paused time is counted as worked time on resume —
-    ///    lastAccruedAt is clean at the exact pause timestamp.
+    /// 2. Subsequent mutations do not retroactively reprice already-earned time.
     ///
-    /// On resume, lastAccruedAt is already recent so no reset is needed
-    /// there — accrual simply continues forward from the pause moment.
+    /// For pause flows, the reset checkpoint also ensures no paused time is
+    /// counted as worked time on resume.
     ///
-    /// Only applies to active time-based workers. Trigger timeline and
-    /// inactive workers are skipped — no interval to settle.
+    /// Only applies to active time-based workers. Trigger timeline and inactive
+    /// workers are skipped — no interval to settle.
     function _settleAndReset(Worker storage worker) internal {
         _accrue(worker); // settle whole intervals first
 
