@@ -21,8 +21,8 @@ export function AdminPageHeader({ title, subtitle }: AdminPageHeaderProps) {
     <div className="rounded-[32px] border border-border/70 bg-card p-8 shadow-sm">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">{title}</h1>
-          <p className="text-base text-muted-foreground font-medium">{subtitle}</p>
+          <h1 className="mobile-ellipsis-1 text-3xl font-bold tracking-tight text-foreground">{title}</h1>
+          <p className="mobile-ellipsis-2 text-base text-muted-foreground font-medium">{subtitle}</p>
         </div>
         
         <div className="flex flex-col items-end gap-2 text-right">
@@ -32,11 +32,11 @@ export function AdminPageHeader({ title, subtitle }: AdminPageHeaderProps) {
             </div>
             <span className="text-sm font-bold text-foreground">{isOwner ? "Owner" : "Admin"}</span>
             <div className="h-4 w-px bg-border/60 mx-1" />
-            <span className="font-mono text-xs text-muted-foreground tracking-tight">
+            <span className="mobile-ellipsis-1 max-w-[8rem] font-mono text-xs text-muted-foreground tracking-tight sm:max-w-none">
               {shortenedAddress}
             </span>
           </div>
-          <p className="text-[10px] font-bold text-muted-foreground/50 tracking-widest uppercase font-mono">
+          <p className="mobile-ellipsis-2 text-[10px] font-bold text-muted-foreground/50 tracking-widest uppercase font-mono">
             Access resolved from owner() and admins(address)
           </p>
         </div>

@@ -3,7 +3,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useMemo, useState, useRef } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import {
   AlertTriangle,
   ArrowRightLeft,
@@ -92,6 +92,85 @@ function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`
 }
 
+function IncomingMigrationCard({
+  address,
+  migrationOldAddress,
+  setMigrationOldAddress,
+  incomingMigrationRequests,
+  isWalletPending,
+  onAccept,
+}: {
+  address?: Address
+  migrationOldAddress: string
+  setMigrationOldAddress: (value: string) => void
+  incomingMigrationRequests: Address[]
+  isWalletPending: boolean
+  onAccept: () => void
+}) {
+  return (
+    <Card className="rounded-[12px] md:rounded-2xl">
+      <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
+        <CardTitle className="text-base md:text-xl font-semibold">Accept migration</CardTitle>
+        <CardDescription className="mobile-ellipsis-2 text-xs md:text-sm">
+          This wallet was nominated as the destination for an existing worker record.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
+        {incomingMigrationRequests.length > 0 ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <p className="text-[11px] font-medium text-foreground">Incoming requests</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {incomingMigrationRequests.map((oldAddress) => (
+                <Button
+                  key={oldAddress}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 max-w-full rounded-full font-mono text-[10px]"
+                  onClick={() => setMigrationOldAddress(oldAddress)}
+                >
+                  <span className="mobile-ellipsis-1 block max-w-[10rem]">{shortAddress(oldAddress)}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <div className="rounded-xl border border-border/70 bg-background/80 p-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">Destination wallet</p>
+          <p className="mobile-ellipsis-1 mobile-anywhere mt-1 font-mono text-xs text-foreground">
+            {address ?? "Not connected"}
+          </p>
+        </div>
+        <Input
+          value={migrationOldAddress}
+          onChange={(event) => setMigrationOldAddress(event.target.value)}
+          placeholder="Old worker address"
+          className="font-mono h-10 md:h-9 mobile-anywhere"
+        />
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full md:w-auto h-10 md:h-9 rounded-xl" disabled={isWalletPending}>
+              Accept Migration
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Accept migration into this wallet?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will move the worker state from {migrationOldAddress || "the old wallet"} into {address ? shortAddress(address) : "this wallet"}.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Back</AlertDialogCancel>
+              <AlertDialogAction onClick={onAccept}>Accept Migration</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </CardContent>
+    </Card>
+  )
+}
+
 function StatCard({
   title,
   value,
@@ -140,9 +219,9 @@ export function WorkerDashboard() {
   const [migrationOldAddress, setMigrationOldAddress] = useState("")
   const [copied, setCopied] = useState(false)
 
-  const navigateToSection = (id: WorkerSectionId) => {
+  const navigateToSection = useCallback((id: WorkerSectionId) => {
     router.push(`/dashboard/worker?section=${id}`)
-  }
+  }, [router])
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
@@ -162,24 +241,20 @@ export function WorkerDashboard() {
   const isProposalUrgent = !!data?.pendingProposal?.terminateOnReject
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
-  const recentActivity = Array.isArray(data?.recentActivity) ? data.recentActivity : []
-  const recentTransactions = useMemo(
-    () =>
-      recentActivity
-        .filter((item) => item.txHash)
-        .slice(0, 4)
-        .map((item) => ({
-          ...item,
-          explorerUrl: contract ? getTransactionExplorerUrl(contract.chainId, item.txHash!) : "",
-        })),
-    [contract, recentActivity],
-  )
+  const hasIncomingMigrationAccess = data.incomingMigrationRequests.length > 0
+  const recentTransactions = (Array.isArray(data?.recentActivity) ? data.recentActivity : [])
+    .filter((item) => item.txHash)
+    .slice(0, 4)
+    .map((item) => ({
+      ...item,
+      explorerUrl: contract ? getTransactionExplorerUrl(contract.chainId, item.txHash!) : "",
+    }))
 
   useEffect(() => {
     const handler = () => navigateToSection("support")
     window.addEventListener("streamwage:open-worker-support", handler)
     return () => window.removeEventListener("streamwage:open-worker-support", handler)
-  }, [])
+  }, [navigateToSection])
 
   useEffect(() => {
     if (receipt.isSuccess) {
@@ -267,13 +342,71 @@ export function WorkerDashboard() {
   }
 
   if (!data.exists) {
+    if (hasIncomingMigrationAccess) {
+      return (
+        <WorkerLayout>
+          <section className="min-w-0 space-y-6">
+            <div className="rounded-[24px] md:rounded-[32px] border border-border/70 bg-card p-5 md:p-6 shadow-sm">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Migration
+                  </p>
+                  <h1 className="mobile-ellipsis-1 mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+                    Accept worker access
+                  </h1>
+                  <p className="mobile-ellipsis-2 mt-2 max-w-2xl text-sm text-muted-foreground">
+                    This wallet is not yet a worker, but it has been nominated as the destination for a pending worker migration.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Role source</p>
+                  <p className="mobile-ellipsis-2 mobile-anywhere mt-1 font-mono text-xs text-muted-foreground">
+                    {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <IncomingMigrationCard
+              address={address}
+              migrationOldAddress={migrationOldAddress}
+              setMigrationOldAddress={setMigrationOldAddress}
+              incomingMigrationRequests={data.incomingMigrationRequests}
+              isWalletPending={isWalletPending}
+              onAccept={() =>
+                void executeWrite("Accept migration", async () =>
+                  writeContractAsync({
+                    ...contract!,
+                    functionName: "acceptMigration",
+                    args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+                  }),
+                )
+              }
+            />
+
+            <Card className="rounded-[12px] md:rounded-2xl">
+              <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
+                <CardTitle className="text-base md:text-xl font-semibold">Why this page is available</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
+                <p className="mobile-ellipsis-2 text-xs md:text-sm text-muted-foreground leading-relaxed">
+                  The contract allows the destination wallet to accept a pending migration before it becomes a worker. Once accepted, this wallet inherits the original worker state.
+                </p>
+              </CardContent>
+            </Card>
+          </section>
+        </WorkerLayout>
+      )
+    }
+
     return (
       <WorkerLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-          <p className="text-sm text-muted-foreground">
+          <p className="mobile-ellipsis-2 text-sm text-muted-foreground">
             This wallet is not registered as a worker in the payroll contract.
           </p>
-          <p className="font-mono text-xs text-muted-foreground">
+          <p className="mobile-ellipsis-2 mobile-anywhere font-mono text-xs text-muted-foreground">
             {isConfigured ? `Role source: ${contractAddress} on chain ${chainId}` : "Contract not configured"}
           </p>
         </div>
@@ -440,7 +573,7 @@ export function WorkerDashboard() {
             </TooltipTrigger>
             <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
               <p className="text-xs font-medium leading-relaxed">
-                Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+                Estimated based on the treasury&apos;s free balance only. Does not account for pending worker claims or future funding.
               </p>
             </TooltipContent>
           </Tooltip>
@@ -726,8 +859,8 @@ export function WorkerDashboard() {
               {data.pendingProposal.proposalNote && (
                 <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600/60">Message from operator</p>
-                  <blockquote className="text-sm text-blue-900/80 italic leading-relaxed">
-                    "{data.pendingProposal.proposalNote}"
+                  <blockquote className="mobile-ellipsis-2 text-sm text-blue-900/80 italic leading-relaxed">
+                    &quot;{data.pendingProposal.proposalNote}&quot;
                   </blockquote>
                 </div>
               )}
@@ -822,7 +955,7 @@ export function WorkerDashboard() {
       <Card className="rounded-[12px] md:rounded-2xl">
         <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
           <CardTitle className="text-base md:text-xl font-semibold">Worker profile</CardTitle>
-          <CardDescription className="text-xs md:text-sm">Wallet identity and metadata.</CardDescription>
+          <CardDescription className="mobile-ellipsis-2 text-xs md:text-sm">Wallet identity and metadata.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 md:p-6 pt-0 md:pt-0 divide-y divide-border text-xs md:text-sm">
           <div className="flex justify-between gap-4 py-3 first:pt-0">
@@ -835,7 +968,7 @@ export function WorkerDashboard() {
           </div>
           <div className="flex justify-between gap-4 py-3">
             <span className="text-muted-foreground">Metadata</span>
-            <span className="max-w-[12rem] md:max-w-[24rem] truncate text-right text-foreground">{data.metadata || "—"}</span>
+            <span className="mobile-ellipsis-2 max-w-[12rem] md:max-w-[24rem] text-right text-foreground">{data.metadata || "—"}</span>
           </div>
           <div className="flex justify-between gap-4 py-3">
             <span className="text-muted-foreground">Wallet</span>
@@ -851,10 +984,10 @@ export function WorkerDashboard() {
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Propose migration</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Move your worker record to a new wallet.</CardDescription>
+          <CardDescription className="mobile-ellipsis-2 text-xs md:text-sm">Move your worker record to a new wallet.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
-            <Input value={migrationAddress} onChange={(event) => setMigrationAddress(event.target.value)} placeholder="New wallet address" className="font-mono h-10 md:h-9" />
+            <Input value={migrationAddress} onChange={(event) => setMigrationAddress(event.target.value)} placeholder="New wallet address" className="font-mono h-10 md:h-9 mobile-anywhere" />
             <div className="flex flex-wrap gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -923,65 +1056,22 @@ export function WorkerDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[12px] md:rounded-2xl">
-          <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
-            <CardTitle className="text-base md:text-xl font-semibold">Accept migration</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Accept a proposed migration from an old wallet.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
-            {data.incomingMigrationRequests.length > 0 && (
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                <p className="text-[11px] font-medium text-foreground">Incoming requests</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {data.incomingMigrationRequests.map((oldAddress) => (
-                    <Button
-                      key={oldAddress}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 rounded-full font-mono text-[10px]"
-                      onClick={() => setMigrationOldAddress(oldAddress)}
-                    >
-                      {shortAddress(oldAddress)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <Input value={migrationOldAddress} onChange={(event) => setMigrationOldAddress(event.target.value)} placeholder="Old worker address" className="font-mono h-10 md:h-9" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" className="w-full md:w-auto h-10 md:h-9 rounded-xl" disabled={isWalletPending}>
-                  Accept Migration
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Accept migration into this wallet?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will move the worker state from {migrationOldAddress || "the old wallet"} into {address ? shortAddress(address) : "this wallet"}.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Back</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() =>
-                      void executeWrite("Accept migration", async () =>
-                        writeContractAsync({
-                          ...contract!,
-                          functionName: "acceptMigration",
-                          args: [toAddressOrThrow(migrationOldAddress, "Old address")],
-                        }),
-                      )
-                    }
-                  >
-                    Accept Migration
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </CardContent>
-        </Card>
+        <IncomingMigrationCard
+          address={address}
+          migrationOldAddress={migrationOldAddress}
+          setMigrationOldAddress={setMigrationOldAddress}
+          incomingMigrationRequests={data.incomingMigrationRequests}
+          isWalletPending={isWalletPending}
+          onAccept={() =>
+            void executeWrite("Accept migration", async () =>
+              writeContractAsync({
+                ...contract!,
+                functionName: "acceptMigration",
+                args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+              }),
+            )
+          }
+        />
       </div>
     </div>
   )
@@ -1015,7 +1105,7 @@ export function WorkerDashboard() {
             <CardTitle className="text-sm md:text-base font-semibold">{item.title}</CardTitle>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
-            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+            <p className="mobile-ellipsis-2 text-xs md:text-sm text-muted-foreground leading-relaxed">{item.body}</p>
           </CardContent>
         </Card>
       ))}
@@ -1031,10 +1121,10 @@ export function WorkerDashboard() {
               <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 {selectedSection.eyebrow}
               </p>
-              <h1 className="mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+              <h1 className="mobile-ellipsis-1 mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
                 {selectedSection.label}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              <p className="mobile-ellipsis-2 mt-2 max-w-2xl text-sm text-muted-foreground">
                 {selectedSection.description}
               </p>
             </div>
@@ -1071,7 +1161,7 @@ export function WorkerDashboard() {
                 )}
               </div>
               {receipt.isSuccess ? <p className="mt-2 text-xs text-primary">Most recent write confirmed.</p> : null}
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mobile-ellipsis-2 mobile-anywhere mt-2 text-xs text-muted-foreground">
                 {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
               </p>
             </div>

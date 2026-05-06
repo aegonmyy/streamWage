@@ -40,6 +40,7 @@ export type PayrollAdminData = {
   treasuryBalanceWei: bigint
   totalRatePerSecondWei: bigint
   runwaySeconds: bigint
+  safeWithdrawableWei: bigint
   defaultProposalWindowSeconds: bigint
   lowTreasuryThresholdSeconds: bigint
   lifetimePaidWei: bigint
@@ -179,6 +180,9 @@ export function usePayrollAdminData() {
       const lowTreasuryThresholdSeconds = baseReads[2] as bigint
       const [totalRatePerSecondWei, runwaySeconds] = baseReads[3] as [bigint, bigint]
       const treasuryBalanceWei = baseReads[4] as bigint
+      const minimumReserveWei = totalRatePerSecondWei * 3_600n
+      const safeWithdrawableWei =
+        treasuryBalanceWei > minimumReserveWei ? treasuryBalanceWei - minimumReserveWei : 0n
 
       admins.delete(owner)
       const enabledAdmins = Array.from(admins.entries())
@@ -289,6 +293,7 @@ export function usePayrollAdminData() {
         treasuryBalanceWei,
         totalRatePerSecondWei,
         runwaySeconds,
+        safeWithdrawableWei,
         defaultProposalWindowSeconds,
         lowTreasuryThresholdSeconds,
         lifetimePaidWei,

@@ -3,7 +3,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
-import { useMemo, useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import {
   AlertTriangle,
   BadgeCheck,
@@ -71,7 +71,6 @@ import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib
 import { cn } from "@/lib/utils"
 
 import AdminLayout from "@/app/dashboard/admin-layout-shell"
-import { AdminPageHeader } from "./admin-page-header"
 import { WorkersView } from "./admin-workers/workers-view"
 import { ProposalsView } from "./admin-proposals/proposals-view"
 
@@ -172,7 +171,7 @@ function MetricCard({
           </TooltipTrigger>
           <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
             <p className="text-xs font-medium leading-relaxed">
-              Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+              Estimated based on the treasury&apos;s free balance only. Does not account for pending worker claims or future funding.
             </p>
           </TooltipContent>
         </Tooltip>
@@ -269,7 +268,7 @@ function StatCard({
           </TooltipTrigger>
           <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
             <p className="text-xs font-medium leading-relaxed">
-              Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+              Estimated based on the treasury&apos;s free balance only. Does not account for pending worker claims or future funding.
             </p>
           </TooltipContent>
         </Tooltip>
@@ -314,13 +313,8 @@ export function AdminDashboard() {
   const runwaySeconds = data?.runwaySeconds ?? 0n
   const totalRatePerSecondWei = data?.totalRatePerSecondWei ?? 0n
   const lifetimePaidWei = data?.lifetimePaidWei ?? 0n
+  const safeWithdrawableWei = data?.safeWithdrawableWei ?? 0n
   const isLowTreasury = lowTreasuryThresholdSeconds > 0n && runwaySeconds < lowTreasuryThresholdSeconds
-
-  const safeWithdrawableWei = useMemo(() => {
-    if (!data) return 0n
-    const reserve = data.totalRatePerSecondWei * 3_600n
-    return data.treasuryBalanceWei > reserve ? data.treasuryBalanceWei - reserve : 0n
-  }, [data])
 
   useEffect(() => {
     if (receipt.isSuccess) {
@@ -632,7 +626,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Fund treasury</CardTitle>
-            <CardDescription>Send ETH through the contract’s `fundTreasury()` path.</CardDescription>
+            <CardDescription className="mobile-ellipsis-2">Send ETH through the contract’s `fundTreasury()` path.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Dialog open={isFundingOpen} onOpenChange={setIsFundingOpen}>
@@ -674,7 +668,7 @@ export function AdminDashboard() {
                 </div>
               </DialogContent>
             </Dialog>
-            <p className="text-sm text-muted-foreground">
+            <p className="mobile-ellipsis-2 text-sm text-muted-foreground">
               The treasury section updates when `TreasuryFunded`, `Claimed`, `ExcessWithdrawn`, or payroll state-change events land.
             </p>
           </CardContent>
@@ -683,16 +677,25 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Treasury controls</CardTitle>
-            <CardDescription>Routine operator actions and owner-only treasury thresholds.</CardDescription>
+            <CardDescription className="mobile-ellipsis-2">Routine operator actions and owner-only treasury thresholds.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-2xl border border-border/70 p-4">
               <p className="text-sm font-medium text-foreground">Withdraw excess</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mobile-ellipsis-2 mt-1 text-sm text-muted-foreground">
                 Pull only the amount above the enforced one-hour reserve buffer.
               </p>
+              <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">Available now</p>
+                <p className="mobile-ellipsis-1 mt-1 font-mono text-sm font-semibold text-foreground">
+                  {formatEth(safeWithdrawableWei, 4)} ETH
+                </p>
+                <p className="mobile-ellipsis-2 mt-1 text-xs text-muted-foreground">
+                  This mirrors the contract rule used by `withdrawExcess()`: current balance minus the enforced one-hour reserve.
+                </p>
+              </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Input value={withdrawRecipient} onChange={(event) => setWithdrawRecipient(event.target.value)} placeholder="Recipient address" className="font-mono" />
+                <Input value={withdrawRecipient} onChange={(event) => setWithdrawRecipient(event.target.value)} placeholder="Recipient address" className="font-mono mobile-anywhere" />
                 <Input value={withdrawAmount} onChange={(event) => setWithdrawAmount(event.target.value)} placeholder="0.0 ETH" type="number" className="font-mono" />
               </div>
               <Button
@@ -719,7 +722,7 @@ export function AdminDashboard() {
                 <p className="text-sm font-medium text-foreground">Low treasury threshold</p>
                 <Badge variant="secondary" className="rounded-full">Owner only</Badge>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mobile-ellipsis-2 mt-1 text-sm text-muted-foreground">
                 Current warning threshold is {formatDuration(lowTreasuryThresholdSeconds)}.
               </p>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
@@ -920,15 +923,15 @@ export function AdminDashboard() {
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                   {selectedSection.label}
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
+                <p className="mobile-ellipsis-2 mt-2 max-w-2xl text-sm text-muted-foreground">{selectedSection.description}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Protocol Context</p>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">
+                <p className="mobile-ellipsis-2 mobile-anywhere mt-1 font-mono text-xs text-muted-foreground">
                   {isConfigured ? `${contractAddress} on chain ${chainId}` : "Contract not configured"}
                 </p>
                 {receipt.isSuccess ? (
-                  <p className="mt-2 text-xs text-primary font-medium">Last transaction confirmed.</p>
+                  <p className="mobile-ellipsis-1 mt-2 text-xs text-primary font-medium">Last transaction confirmed.</p>
                 ) : null}
               </div>
             </div>
