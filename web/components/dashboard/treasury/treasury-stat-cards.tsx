@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { useBalance, useReadContract } from "wagmi";
 import { cn, formatEth, RUNWAY_DAYS, getRunwayColor, formatRunway } from "@/lib/utils";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { usePayrollContractConfig } from "@/lib/payroll-contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -61,7 +61,7 @@ const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassNa
 };
 
 export function TreasuryStatCards() {
-  const contractConfig = getPayrollContractConfig();
+  const contractConfig = usePayrollContractConfig();
   const contractAddress = contractConfig?.address;
 
   // Fetch treasury balance

@@ -6,10 +6,10 @@ import { TreasuryPageHeader } from "@/components/dashboard/treasury/treasury-pag
 import { TreasuryStatCards } from "@/components/dashboard/treasury/treasury-stat-cards";
 import { TreasuryActionsActivity } from "@/components/dashboard/treasury/treasury-actions-activity";
 import { WorkerDrainBreakdownTable } from "@/components/dashboard/treasury/worker-drain-breakdown";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { usePayrollContractConfig } from "@/lib/payroll-contract";
 
 export default function TreasuryPage() {
-  const contractConfig = getPayrollContractConfig();
+  const contractConfig = usePayrollContractConfig();
   const contractAddress = contractConfig?.address;
 
   // Fetch treasury balance

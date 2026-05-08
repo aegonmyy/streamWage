@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { usePublicClient } from "wagmi"
 import { decodeEventLog, formatEther, formatUnits, getAddress, type Address } from "viem"
-import { getPayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
+import { usePayrollContractConfig, payrollAbi, getLogsInChunks } from "@/lib/payroll-contract"
 
 export type PayrollTimeline = "Hourly" | "Monthly" | "Custom" | "Trigger"
 
@@ -105,7 +105,7 @@ export function formatWeiRatePerDay(value: bigint) {
 }
 
 export function usePayrollAdminData() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const publicClient = usePublicClient({ chainId: contract?.chainId })
   const queryClient = useQueryClient()
 

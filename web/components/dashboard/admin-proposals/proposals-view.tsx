@@ -25,7 +25,7 @@ import {
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
-import { getPayrollContractConfig, getLogsInChunks } from "@/lib/payroll-contract"
+import { usePayrollContractConfig, getLogsInChunks } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 
@@ -182,7 +182,7 @@ function ProposalStatCard({
 }
 
 export function ProposalsView() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const { data, isLoading, refetch } = usePayrollAdminData()
   const publicClient = usePublicClient({ chainId: contract?.chainId })
   

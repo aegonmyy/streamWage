@@ -5,11 +5,11 @@ import { useAccount, useReadContracts } from "wagmi"
 import { getAddress, isAddress } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 import { type DashboardRole } from "@/lib/dashboard-role"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { usePayrollContractConfig } from "@/lib/payroll-contract"
 
 export function usePayrollRole() {
   const { address: realAddress, isConnected: realIsConnected } = useAccount()
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
 
   const isAuthEnabled = process.env.NEXT_PUBLIC_IS_AUTH_ENABLED !== "false"
   const isDevMode = 

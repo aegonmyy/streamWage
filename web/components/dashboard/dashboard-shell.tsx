@@ -5,7 +5,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const view: "worker" | "admin" = pathname?.includes("/dashboard/admin") ? "admin" : "worker"
+  const view: "worker" | "admin" = pathname?.includes("/admin") ? "admin" : "worker"
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-background">

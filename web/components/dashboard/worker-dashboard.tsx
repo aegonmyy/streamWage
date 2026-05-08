@@ -57,9 +57,10 @@ import {
   formatTimeline,
   usePayrollWorkerData,
 } from "@/hooks/use-payroll-worker-data"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
+import { getWorkerDashboardPath } from "@/lib/payroll-routing"
 
 type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
 
@@ -206,7 +207,7 @@ function StatCard({
 }
 
 export function WorkerDashboard() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const { address, isConnected } = useAccount()
   const { isConfigured, contractAddress, chainId, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollWorkerData()
@@ -220,8 +221,9 @@ export function WorkerDashboard() {
   const [copied, setCopied] = useState(false)
 
   const navigateToSection = useCallback((id: WorkerSectionId) => {
-    router.push(`/dashboard/worker?section=${id}`)
-  }, [router])
+    if (!contract) return
+    router.push(getWorkerDashboardPath(contract.address, id === "overview" ? undefined : id))
+  }, [contract, router])
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
@@ -290,7 +292,7 @@ export function WorkerDashboard() {
     return (
       <WorkerLayout>
         <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-          Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable worker reads.
+          Open this page through a payroll contract route to enable worker reads.
         </div>
       </WorkerLayout>
     )
@@ -331,7 +333,7 @@ export function WorkerDashboard() {
       <WorkerLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
           <p className="text-sm text-destructive">
-            {error instanceof Error ? error.message : "Failed to load worker state."}
+            {error instanceof Error ? error.message : "Could not load worker details for this payroll."}
           </p>
           <Button variant="outline" onClick={() => void refetch()}>
             Retry
@@ -353,10 +355,10 @@ export function WorkerDashboard() {
                     Migration
                   </p>
                   <h1 className="mobile-ellipsis-1 mt-1 md:mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-                    Accept worker access
+                    Accept worker migration
                   </h1>
                   <p className="mobile-ellipsis-2 mt-2 max-w-2xl text-sm text-muted-foreground">
-                    This wallet is not yet a worker, but it has been nominated as the destination for a pending worker migration.
+                    This wallet has been selected as the destination for a worker move. Accept it here to bring the worker record into this address.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-border/70 bg-background/80 px-4 py-3">
@@ -391,7 +393,7 @@ export function WorkerDashboard() {
               </CardHeader>
               <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
                 <p className="mobile-ellipsis-2 text-xs md:text-sm text-muted-foreground leading-relaxed">
-                  The contract allows the destination wallet to accept a pending migration before it becomes a worker. Once accepted, this wallet inherits the original worker state.
+                  The destination wallet can accept a pending move before it becomes an active worker on this payroll. After acceptance, this address takes over the worker record.
                 </p>
               </CardContent>
             </Card>
@@ -404,7 +406,7 @@ export function WorkerDashboard() {
       <WorkerLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
           <p className="mobile-ellipsis-2 text-sm text-muted-foreground">
-            This wallet is not registered as a worker in the payroll contract.
+            This wallet does not have a worker record on this payroll.
           </p>
           <p className="mobile-ellipsis-2 mobile-anywhere font-mono text-xs text-muted-foreground">
             {isConfigured ? `Role source: ${contractAddress} on chain ${chainId}` : "Contract not configured"}

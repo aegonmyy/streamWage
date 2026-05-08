@@ -23,13 +23,15 @@ import { useAccount, useDisconnect } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
+import { usePayrollContractAddress } from "@/lib/payroll-contract"
+import { getWorkerDashboardPath } from "@/lib/payroll-routing"
 
 const SIDEBAR_ITEMS = [
-  { id: "overview", label: "Overview", description: "Your claimable balance and status.", icon: LayoutDashboard, href: "/dashboard/worker" },
-  { id: "earnings", label: "Earnings", description: "Claim funds and review totals.", icon: Wallet, href: "/dashboard/worker?section=earnings" },
-  { id: "proposals", label: "Proposals", description: "Review and accept terms.", icon: Clock3, href: "/dashboard/worker?section=proposals" },
-  { id: "profile", label: "Profile", description: "Wallet and migration tools.", icon: User, href: "/dashboard/worker?section=profile" },
-  { id: "support", label: "Support", description: "Help and documentation.", icon: HelpCircle, href: "/dashboard/worker?section=support" },
+  { id: "overview", label: "Overview", description: "Your claimable balance and status.", icon: LayoutDashboard },
+  { id: "earnings", label: "Earnings", description: "Claim funds and review totals.", icon: Wallet },
+  { id: "proposals", label: "Proposals", description: "Review and accept terms.", icon: Clock3 },
+  { id: "profile", label: "Profile", description: "Wallet and migration tools.", icon: User },
+  { id: "support", label: "Support", description: "Help and documentation.", icon: HelpCircle },
 ]
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +41,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
+  const contractAddress = usePayrollContractAddress()
 
   const [isNavOpen, setIsNavOpen] = useState(false)
 
@@ -66,9 +69,8 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const currentSection = searchParams.get("section") || "overview"
 
   const handleSectionChange = (id: string) => {
-    const item = SIDEBAR_ITEMS.find(i => i.id === id)
-    if (item?.href) {
-      router.push(item.href)
+    if (contractAddress) {
+      router.push(getWorkerDashboardPath(contractAddress, id === "overview" ? undefined : id))
       setIsNavOpen(false)
     }
   }

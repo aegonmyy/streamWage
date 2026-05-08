@@ -9,7 +9,7 @@ import { Info } from "lucide-react"
 import { usePayrollAdminData, type AdminWorkerRecord, formatEth } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
 
 import { WorkerStats } from "./worker-stats"
@@ -37,7 +37,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 
 export function WorkersView() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const { data, isLoading, refetch } = usePayrollAdminData()
   
   // Search and Filter State

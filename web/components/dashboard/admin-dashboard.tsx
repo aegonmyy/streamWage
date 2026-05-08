@@ -66,9 +66,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
+import { getAdminDashboardPath } from "@/lib/payroll-routing"
 
 import AdminLayout from "@/app/dashboard/admin-layout-shell"
 import { WorkersView } from "./admin-workers/workers-view"
@@ -280,7 +281,7 @@ function StatCard({
 }
 
 export function AdminDashboard() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const { address: connectedAddress } = useAccount()
   const { contractAddress, chainId, isConfigured, isDevMode } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollAdminData()
@@ -340,7 +341,8 @@ export function AdminDashboard() {
   }
 
   const navigateToSection = (id: AdminSectionId) => {
-    router.push(`/dashboard/admin?section=${id}`)
+    if (!contract) return
+    router.push(getAdminDashboardPath(contract.address, id === "overview" ? undefined : id))
   }
 
   const renderOverview = () => {
@@ -851,7 +853,7 @@ export function AdminDashboard() {
     return (
       <AdminLayout>
         <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-muted-foreground sm:px-6">
-          Configure `NEXT_PUBLIC_PAYROLL_CONTRACT_ADDRESS` and `NEXT_PUBLIC_PAYROLL_CHAIN_ID` to enable the admin dashboard.
+          Open this page through a payroll contract route to enable the admin dashboard.
         </div>
       </AdminLayout>
     )

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { usePayrollRole } from "@/hooks/use-payroll-role";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { usePayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +23,7 @@ interface LowTreasuryThresholdPanelProps {
 export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryThresholdPanelProps) {
   const [newThresholdDays, setNewThresholdDays] = useState("");
   const { isOwner, isAdmin, isConnected } = usePayrollRole();
-  const contractConfig = getPayrollContractConfig();
+  const contractConfig = usePayrollContractConfig();
 
   const { data: currentThresholdSeconds, refetch: refetchThreshold } = useReadContract({
     ...contractConfig,

@@ -25,13 +25,15 @@ import { useAccount, useDisconnect } from "wagmi"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
+import { usePayrollContractAddress } from "@/lib/payroll-contract"
+import { getAdminDashboardPath } from "@/lib/payroll-routing"
 
 const SIDEBAR_ITEMS = [
-  { id: "overview", label: "Overview", description: "Treasury health and metrics.", icon: LayoutDashboard, href: "/dashboard/admin" },
-  { id: "workers", label: "Workers", description: "Manage active roster.", icon: Users, href: "/dashboard/admin?section=workers" },
-  { id: "proposals", label: "Proposals", description: "Review pending terms.", icon: Clock3, href: "/dashboard/admin?section=proposals" },
-  { id: "treasury", label: "Treasury", description: "Fund and manage capital.", icon: Wallet, href: "/dashboard/admin?section=treasury" },
-  { id: "admins", label: "Admins", description: "Access controls.", icon: Shield, href: "/dashboard/admin?section=admins" },
+  { id: "overview", label: "Overview", description: "Treasury health and metrics.", icon: LayoutDashboard },
+  { id: "workers", label: "Workers", description: "Manage active roster.", icon: Users },
+  { id: "proposals", label: "Proposals", description: "Review pending terms.", icon: Clock3 },
+  { id: "treasury", label: "Treasury", description: "Fund and manage capital.", icon: Wallet },
+  { id: "admins", label: "Admins", description: "Access controls.", icon: Shield },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +42,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { data } = usePayrollAdminData()
   const { isAdmin, isConnected, isLoading, isDevMode } = usePayrollRole()
   const { address } = useAccount()
+  const contractAddress = usePayrollContractAddress()
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
 
@@ -73,9 +76,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const currentSection = searchParams.get("section") || "overview"
 
   const handleSectionChange = (id: string) => {
-    const item = SIDEBAR_ITEMS.find(i => i.id === id)
-    if (item?.href) {
-      router.push(item.href)
+    if (contractAddress) {
+      router.push(getAdminDashboardPath(contractAddress, id === "overview" ? undefined : id))
       setIsNavOpen(false)
     }
   }

@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAccount, usePublicClient } from "wagmi"
 import { decodeEventLog, getAddress, type Address } from "viem"
-import { getPayrollContractConfig, payrollAbi, getLogsInChunks, getPayrollEventLookbackBlocks } from "@/lib/payroll-contract"
+import { usePayrollContractConfig, payrollAbi, getLogsInChunks, getPayrollEventLookbackBlocks } from "@/lib/payroll-contract"
 import {
   formatDuration,
   formatEth,
@@ -65,7 +65,7 @@ function timelineLabel(value: number): PayrollTimeline {
 }
 
 export function usePayrollWorkerData() {
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
   const { address } = useAccount()
   const publicClient = usePublicClient({ chainId: contract?.chainId })
   const queryClient = useQueryClient()

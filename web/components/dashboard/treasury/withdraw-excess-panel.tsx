@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { parseEther, isAddress, Address } from "viem";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { cn, formatEth, getRunwayColor, formatRunway } from "@/lib/utils";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { usePayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ export function WithdrawExcessPanel({ contractBalance, totalRatePerSecond, refet
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   
   const { address: connectedAddress, isConnected } = useAccount();
-  const contractConfig = getPayrollContractConfig();
+  const contractConfig = usePayrollContractConfig();
 
   const { writeContract, data: hash, isPending: isWithdrawPending, error: writeError } = useWriteContract();
 

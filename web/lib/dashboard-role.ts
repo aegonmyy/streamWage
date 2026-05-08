@@ -1,12 +1,13 @@
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import type { Address } from "viem"
+import { getAdminDashboardPath, getWorkerDashboardPath } from "@/lib/payroll-routing"
 
 export type DashboardRole = "admin" | "worker"
 
-export function getDashboardPathForRole(role: DashboardRole): string {
-  return role === "admin" ? "/dashboard/admin" : "/dashboard/worker"
+export function getDashboardPathForRole(role: DashboardRole, contractAddress: Address): string {
+  return role === "admin" ? getAdminDashboardPath(contractAddress) : getWorkerDashboardPath(contractAddress)
 }
 
 export function defaultDashboardPathForAddress(address: string | undefined, isConnected: boolean): string {
-  if (!isConnected || !address) return getDashboardPathForRole("worker")
-  return getDashboardPathForRole("worker")
+  if (!isConnected || !address) return "/dashboard"
+  return "/dashboard"
 }

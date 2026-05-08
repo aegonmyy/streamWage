@@ -5,7 +5,7 @@ import { Shield, Zap, Wallet, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { useReadContract, useAccount, useWaitForTransactionReceipt } from "wagmi"
-import { getPayrollContractConfig } from "@/lib/payroll-contract"
+import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import { toast } from "sonner"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
@@ -19,7 +19,7 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ view }: DashboardHeaderProps) {
   const { isAdmin, isConnected, isLoading } = usePayrollRole()
   const { address } = useAccount()
-  const contract = getPayrollContractConfig()
+  const contract = usePayrollContractConfig()
 
   const { data: owner } = useReadContract({
     address: contract?.address,

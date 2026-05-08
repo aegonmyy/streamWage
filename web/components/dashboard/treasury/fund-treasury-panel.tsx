@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { parseEther } from "viem";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from "wagmi";
 import { cn, formatEth, getRunwayColor, formatRunway } from "@/lib/utils";
-import { getPayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { usePayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export function FundTreasuryPanel({ contractBalance, totalRatePerSecond, refetch
   const [isCustomAmount, setIsCustomAmount] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const { address: connectedAddress, isConnected } = useAccount();
-  const contractConfig = getPayrollContractConfig();
+  const contractConfig = usePayrollContractConfig();
   const publicClient = usePublicClient();
 
   const { writeContract, data: hash, isPending: isFundTreasuryPending, error: writeError } = useWriteContract();
