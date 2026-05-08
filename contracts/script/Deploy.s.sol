@@ -24,6 +24,7 @@ contract Deploy is Script {
 
         console2.log("Deploying with mode:", mode);
         console2.log("Initial owner:", initialOwner);
+        console2.log("Deployer address:", vm.addr(deployerPrivateKey));
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -34,10 +35,12 @@ contract Deploy is Script {
         } else if (_eq(mode, "factory_only")) {
             StreamWagePayrollFactory factory = new StreamWagePayrollFactory();
             console2.log("StreamWagePayrollFactory deployed at:", address(factory));
+            console2.log("Beacon deployed at:", address(factory.beacon()));
         } else {
             // Default: factory + payroll instance
             StreamWagePayrollFactory factory = new StreamWagePayrollFactory();
             console2.log("StreamWagePayrollFactory deployed at:", address(factory));
+            console2.log("Beacon deployed at:", address(factory.beacon()));
 
             if (_eq(mode, "factory")) {
                 StreamWagePayroll payrollViaFactory = factory.deployPayroll(initialOwner);
@@ -60,20 +63,19 @@ contract Deploy is Script {
 
     function _addInitialWorker(StreamWagePayroll payroll) internal {
         address workerAddr = 0x92fAf43CbBEce86ab3f887B9dFef3a8604b16c4B;
-        uint256 amountPerIntervalWei = 0.0001 ether;
-        uint256 intervalSeconds = 60; // 1 minute
+        uint256 amountPerIntervalWei = 5 ether;
 
         console2.log("Adding initial worker:", workerAddr);
         payroll.addWorker(
             workerAddr,
-            StreamWagePayroll.Timeline.Custom,
+            StreamWagePayroll.Timeline.Monthly,
             amountPerIntervalWei,
-            intervalSeconds,
+            0,
             "Initial worker"
         );
 
-        console2.log("Funding payroll with 0.25 ETH");
-        payroll.fundTreasury{value: 0.25 ether}();
+        console2.log("Funding payroll with 1 ETH");
+        payroll.fundTreasury{value: 1 ether}();
     }
 
     function _eq(
