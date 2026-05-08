@@ -79,35 +79,11 @@ export function usePayrollWorkerData() {
         throw new Error("Wallet and payroll contract are required.")
       }
 
-      const results = await publicClient.multicall({
-        contracts: [
-          { ...contract, functionName: "workers", args: [address] },
-          { ...contract, functionName: "claimable", args: [address] },
-          { ...contract, functionName: "workerRunway", args: [address] },
-          { ...contract, functionName: "pendingTerms", args: [address] },
-          { ...contract, functionName: "pendingMigrations", args: [address] },
-        ],
-      })
-
-      const workerResult = results[0]
-      const claimableResult = results[1]
-      const runwayResult = results[2]
-      const pendingTermsResult = results[3]
-      const pendingMigrationResult = results[4]
-
-      if (
-        workerResult.status !== "success" ||
-        claimableResult.status !== "success" ||
-        runwayResult.status !== "success" ||
-        pendingTermsResult.status !== "success" ||
-        pendingMigrationResult.status !== "success"
-      ) {
-        throw new Error("Failed to read worker state.")
-      }
-
-      const worker = workerResult.result as WorkerResult
-      const pendingTerms = pendingTermsResult.result as PendingTermsResult
-      const pendingMigration = pendingMigrationResult.result as PendingMigrationResult
+      const worker = (await publicClient.readContract({
+        ...contract,
+        functionName: "workers",
+        args: [address],
+      })) as WorkerResult
       const currentBlock = await publicClient.getBlockNumber()
       const lookbackBlocks = getPayrollEventLookbackBlocks()
       const recentFromBlock =
@@ -286,7 +262,7 @@ export function usePayrollWorkerData() {
           ? await publicClient.multicall({
               contracts: incomingCandidateList.map((oldAddress) => ({
                 ...contract,
-                functionName: "pendingMigrations",
+                functionName: "pendingMigrations" as const,
                 args: [oldAddress],
               })),
             })
@@ -300,6 +276,52 @@ export function usePayrollWorkerData() {
       })
 
       recentActivity.sort((left, right) => Number((right.timestamp ?? 0n) - (left.timestamp ?? 0n)))
+
+      if (!worker[0]) {
+        return {
+          address,
+          exists: false,
+          active: false,
+          timeline: "Hourly",
+          amountPerIntervalWei: 0n,
+          intervalSeconds: 0n,
+          accruedWei: 0n,
+          totalClaimedWei: 0n,
+          claimableWei: 0n,
+          runwaySeconds: 0n,
+          metadata: "",
+          pendingProposal: null,
+          pendingMigration: null,
+          incomingMigrationRequests,
+          recentActivity: recentActivity.slice(0, 8),
+        }
+      }
+
+      const results = await publicClient.multicall({
+        contracts: [
+          { ...contract, functionName: "claimable" as const, args: [address] },
+          { ...contract, functionName: "workerRunway" as const, args: [address] },
+          { ...contract, functionName: "pendingTerms" as const, args: [address] },
+          { ...contract, functionName: "pendingMigrations" as const, args: [address] },
+        ],
+      })
+
+      const claimableResult = results[0]
+      const runwayResult = results[1]
+      const pendingTermsResult = results[2]
+      const pendingMigrationResult = results[3]
+
+      if (
+        claimableResult.status !== "success" ||
+        runwayResult.status !== "success" ||
+        pendingTermsResult.status !== "success" ||
+        pendingMigrationResult.status !== "success"
+      ) {
+        throw new Error("Failed to read worker details for this payroll.")
+      }
+
+      const pendingTerms = pendingTermsResult.result as PendingTermsResult
+      const pendingMigration = pendingMigrationResult.result as PendingMigrationResult
 
       return {
         address,
