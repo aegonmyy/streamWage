@@ -6,6 +6,8 @@ import { getAddress, verifyMessage } from "viem"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
+import { toast } from "sonner"
+import { getDisplayErrorMessage } from "@/lib/error-message"
 
 const SIGNATURE_VERSION = "v1"
 const SESSION_TTL_MS = 30 * 60 * 1000
@@ -57,6 +59,14 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
   }, [address, chainId, contractAddress, isAdmin])
 
   const [sessionVerified, setSessionVerified] = useState(false)
+
+  useEffect(() => {
+    if (!error) return
+    toast.error("Admin verification", {
+      description: getDisplayErrorMessage(error, "Signature request failed."),
+    })
+    reset()
+  }, [error, reset])
 
   useEffect(() => {
     if (isDevMode) {
@@ -122,8 +132,12 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
   const handleVerify = async () => {
     if (!address || !message || !sessionKey) return
 
-    const signature = await signMessageAsync({ message })
-    if (!signature) return
+    let signature: `0x${string}`
+    try {
+      signature = await signMessageAsync({ message })
+    } catch {
+      return
+    }
 
     const verified = await verifyMessage({
       address: getAddress(address),
@@ -159,7 +173,6 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
           <div className="rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-6 text-muted-foreground break-all whitespace-pre-wrap">
             {message}
           </div>
-          {error ? <p className="text-sm text-destructive">{error.message}</p> : null}
           <Button type="button" onClick={handleVerify} disabled={isPending || !message}>
             {isPending ? "Waiting for signature…" : "Sign Message"}
           </Button>

@@ -11,6 +11,7 @@ import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
+import { getDisplayErrorMessage } from "@/lib/error-message"
 
 import { WorkerStats } from "./worker-stats"
 import { WorkerToolbar } from "./worker-toolbar"
@@ -111,7 +112,7 @@ export function WorkersView() {
       })
       setActiveModal(null)
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Transaction failed."
+      const message = getDisplayErrorMessage(caught, "Transaction failed.")
       toast.error(actionLabel, { description: message })
     }
   }

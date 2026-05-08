@@ -128,11 +128,16 @@ export function usePayrollAdminData() {
       let ownerFromLogs: Address | undefined
 
       for (const log of logs) {
-        const decoded = decodeEventLog({
-          abi: payrollAbi,
-          data: log.data,
-          topics: log.topics,
-        })
+        let decoded
+        try {
+          decoded = decodeEventLog({
+            abi: payrollAbi,
+            data: log.data,
+            topics: log.topics,
+          })
+        } catch {
+          continue
+        }
         const args = decoded.args as any
 
         if (decoded.eventName === "WorkerAdded") {

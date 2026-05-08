@@ -61,6 +61,7 @@ import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 import { getWorkerDashboardPath } from "@/lib/payroll-routing"
+import { getDisplayErrorMessage } from "@/lib/error-message"
 
 type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
 
@@ -228,6 +229,13 @@ export function WorkerDashboard() {
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
+  useEffect(() => {
+    if (!isError || !error) return
+    toast.error("Worker dashboard", {
+      description: getDisplayErrorMessage(error, "Could not load worker details for this payroll."),
+    })
+  }, [error, isError])
+
   const { data: treasuryBalance, refetch: refetchTreasury } = useBalance({
     address: contract?.address,
     query: { refetchInterval: 30_000 }
@@ -276,7 +284,7 @@ export function WorkerDashboard() {
       })
       onSuccess?.()
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Transaction failed."
+      const message = getDisplayErrorMessage(caught, "Transaction failed.")
       toast.error(actionLabel, { description: message })
     }
   }
@@ -332,9 +340,7 @@ export function WorkerDashboard() {
     return (
       <WorkerLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-          <p className="text-sm text-destructive">
-            {error instanceof Error ? error.message : "Could not load worker details for this payroll."}
-          </p>
+          <p className="text-sm text-muted-foreground">We could not load worker details for this payroll.</p>
           <Button variant="outline" onClick={() => void refetch()}>
             Retry
           </Button>

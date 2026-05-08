@@ -42,25 +42,32 @@ export function useUserPayrolls() {
       })
 
       const deployments = logs
-        .map((log) => {
-          const decoded = decodeEventLog({
-            abi: factory.abi,
-            data: log.data,
-            topics: log.topics,
-          })
+        .flatMap((log) => {
+          let decoded
+          try {
+            decoded = decodeEventLog({
+              abi: factory.abi,
+              data: log.data,
+              topics: log.topics,
+            })
+          } catch {
+            return []
+          }
           const args = decoded.args as {
             payroll: Address
             owner: Address
             deployedBy: Address
           }
 
-          return {
-            address: getAddress(args.payroll),
-            owner: getAddress(args.owner),
-            deployedBy: getAddress(args.deployedBy),
-            blockNumber: log.blockNumber ?? 0n,
-            transactionHash: log.transactionHash ?? null,
-          }
+          return [
+            {
+              address: getAddress(args.payroll),
+              owner: getAddress(args.owner),
+              deployedBy: getAddress(args.deployedBy),
+              blockNumber: log.blockNumber ?? 0n,
+              transactionHash: log.transactionHash ?? null,
+            },
+          ]
         })
         .sort((left, right) => Number(right.blockNumber - left.blockNumber))
 

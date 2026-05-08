@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { getDisplayErrorMessage } from "@/lib/error-message";
 
 interface FundTreasuryPanelProps {
   contractBalance: bigint;
@@ -86,7 +87,7 @@ export function FundTreasuryPanel({ contractBalance, totalRatePerSecond, refetch
     if (writeError || transactionError) {
       toast({
         title: "Transaction failed",
-        description: writeError?.message || transactionError?.message || "Something went wrong.",
+        description: getDisplayErrorMessage(writeError || transactionError, "Something went wrong."),
         variant: "destructive",
       });
     }

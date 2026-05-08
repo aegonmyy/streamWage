@@ -5,6 +5,7 @@ import { parseEther, isAddress, Address } from "viem";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { cn, formatEth, getRunwayColor, formatRunway } from "@/lib/utils";
 import { usePayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { getDisplayErrorMessage } from "@/lib/error-message";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export function WithdrawExcessPanel({ contractBalance, totalRatePerSecond, refet
     if (writeError || transactionError) {
       toast({
         title: "Transaction failed",
-        description: writeError?.message || transactionError?.message || "Something went wrong.",
+        description: getDisplayErrorMessage(writeError || transactionError, "Something went wrong."),
         variant: "destructive",
       });
     }

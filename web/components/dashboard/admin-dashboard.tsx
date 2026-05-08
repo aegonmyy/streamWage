@@ -70,6 +70,7 @@ import { usePayrollContractConfig } from "@/lib/payroll-contract"
 import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 import { getAdminDashboardPath } from "@/lib/payroll-routing"
+import { getDisplayErrorMessage } from "@/lib/error-message"
 
 import AdminLayout from "@/app/dashboard/admin-layout-shell"
 import { WorkersView } from "./admin-workers/workers-view"
@@ -303,6 +304,13 @@ export function AdminDashboard() {
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
+  useEffect(() => {
+    if (!isError || !error) return
+    toast.error("Admin dashboard", {
+      description: getDisplayErrorMessage(error, "Could not load payroll details."),
+    })
+  }, [error, isError])
+
   const selectedSection = SIDEBAR_SECTIONS.find((item) => item.id === section) ?? SIDEBAR_SECTIONS[0]
   const workers = Array.isArray(data?.workers) ? data.workers : []
   const admins = Array.isArray(data?.admins) ? data.admins : []
@@ -335,7 +343,7 @@ export function AdminDashboard() {
       })
       onSuccess?.()
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "Transaction failed."
+      const message = getDisplayErrorMessage(caught, "Transaction failed.")
       toast.error(actionLabel, { description: message })
     }
   }
@@ -894,9 +902,7 @@ export function AdminDashboard() {
     return (
       <AdminLayout>
         <div className="mx-auto max-w-6xl space-y-4 px-4 py-16 sm:px-6">
-          <p className="text-sm text-destructive">
-            {error instanceof Error ? error.message : "Failed to load payroll state."}
-          </p>
+          <p className="text-sm text-muted-foreground">We could not load this payroll right now.</p>
           <Button variant="outline" onClick={() => void refetch()}>
             Retry
           </Button>

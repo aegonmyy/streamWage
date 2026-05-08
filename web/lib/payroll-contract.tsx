@@ -9,7 +9,7 @@ const DEFAULT_PAYROLL_CHAIN_ID = 560048
 const DEFAULT_FROM_BLOCK = 0n
 const DEFAULT_EVENT_LOOKBACK_BLOCKS = 500n
 
-export const payrollAbi = payrollArtifact as unknown as Abi
+export const payrollAbi = ((payrollArtifact as { abi?: Abi }).abi ?? payrollArtifact) as unknown as Abi
 
 const factoryAbi = [
   {

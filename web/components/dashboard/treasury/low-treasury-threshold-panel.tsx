@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { usePayrollRole } from "@/hooks/use-payroll-role";
 import { usePayrollContractConfig, payrollAbi } from "@/lib/payroll-contract";
+import { getDisplayErrorMessage } from "@/lib/error-message";
 import {
   Tooltip,
   TooltipContent,
@@ -70,7 +71,7 @@ export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryTh
     if (writeError || transactionError) {
       toast({
         title: "Transaction failed",
-        description: writeError?.message || transactionError?.message || "Something went wrong.",
+        description: getDisplayErrorMessage(writeError || transactionError, "Something went wrong."),
         variant: "destructive",
       });
     }
