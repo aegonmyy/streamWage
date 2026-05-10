@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { registerWorkerEnrollment } from "@/hooks/use-worker-enrollments"
 
 export function WorkersView() {
   const contract = usePayrollContractConfig()
@@ -58,15 +59,23 @@ export function WorkersView() {
   const [formMetadata, setFormMetadata] = useState("")
   const [formProposalNote, setFormProposalNote] = useState("")
   const [formTerminateOnReject, setFormTerminateOnReject] = useState(false)
+  const [pendingWorkerAddress, setPendingWorkerAddress] = useState<string | null>(null)
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
   useEffect(() => {
-    if (receipt.isSuccess) {
-      refetch()
+    if (!receipt.isSuccess) return
+    refetch()
+    if (pendingWorkerAddress && contract && isAddress(pendingWorkerAddress)) {
+      void registerWorkerEnrollment({
+        workerAddress: getAddress(pendingWorkerAddress),
+        contractAddress: contract.address,
+        chainId: contract.chainId,
+      })
+      setPendingWorkerAddress(null)
     }
-  }, [receipt.isSuccess, refetch])
+  }, [receipt.isSuccess, refetch, pendingWorkerAddress, contract])
 
   // Data processing
   const workers = Array.isArray(data?.workers) ? data.workers : []
@@ -235,6 +244,7 @@ export function WorkersView() {
               onClick={() => executeWrite("Add worker", async () => {
                 if (!isAddress(formAddress)) throw new Error("Invalid worker address")
                 if (!contract) throw new Error("Contract not configured")
+                setPendingWorkerAddress(formAddress.trim())
                 return writeContractAsync({
                   ...contract,
                   functionName: "addWorker",

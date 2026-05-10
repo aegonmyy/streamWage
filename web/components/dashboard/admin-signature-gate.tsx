@@ -44,7 +44,7 @@ type VerifiedSession = {
 }
 
 export function AdminSignatureGate({ children }: { children: React.ReactNode }) {
-  const { address, chainId, contractAddress, isAdmin, isDevMode } = usePayrollRole()
+  const { address, chainId, contractAddress, isAdmin } = usePayrollRole()
   const [verifiedKey, setVerifiedKey] = useState<string | undefined>(undefined)
   const { signMessageAsync, isPending, error, reset } = useSignMessage()
 
@@ -69,10 +69,6 @@ export function AdminSignatureGate({ children }: { children: React.ReactNode }) 
   }, [error, reset])
 
   useEffect(() => {
-    if (isDevMode) {
-      setSessionVerified(true)
-      return
-    }
     let cancelled = false
 
     async function validateSession() {

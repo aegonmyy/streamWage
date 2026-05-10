@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { useUserPayrolls } from "@/hooks/use-user-payrolls"
 import { useIncomingWorkerMigrations } from "@/hooks/use-incoming-worker-migrations"
+import { useWorkerEnrollments } from "@/hooks/use-worker-enrollments"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
 import { getFactoryContractConfig } from "@/lib/payroll-contract"
 import {
@@ -36,6 +37,7 @@ export default function DashboardIndexPage() {
   const factory = getFactoryContractConfig()
   const { data: payrolls = [], isLoading, refetch } = useUserPayrolls()
   const { data: incomingMigrations = [], isLoading: isLoadingIncomingMigrations } = useIncomingWorkerMigrations()
+  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useWorkerEnrollments(normalizedAddress)
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
@@ -43,15 +45,10 @@ export default function DashboardIndexPage() {
 
   useEffect(() => {
     if (!normalizedAddress || payrolls.length === 0) return
-
     const remembered = getLastOpenedPayroll(normalizedAddress)
     const chosen = remembered && payrolls.some((item) => item.address === remembered) ? remembered : payrolls[0].address
     rememberLastOpenedPayroll(normalizedAddress, chosen)
-
-    if (payrolls.length === 1 && incomingMigrations.length === 0) {
-      router.replace(getAdminDashboardPath(chosen))
-    }
-  }, [incomingMigrations.length, normalizedAddress, payrolls, router])
+  }, [normalizedAddress, payrolls])
 
   useEffect(() => {
     if (!receipt.isSuccess || !normalizedAddress) return
@@ -119,7 +116,7 @@ export default function DashboardIndexPage() {
             <ConnectButton />
           </div>
         </div>
-      ) : isLoading || isLoadingIncomingMigrations ? (
+      ) : isLoading || isLoadingIncomingMigrations || isLoadingEnrollments ? (
         <div className="py-28 text-center">
           <LottieAnimation className="mx-auto h-40 w-40" />
           <p className="mt-4 text-sm text-muted-foreground animate-pulse">Checking your payroll access…</p>
@@ -231,28 +228,64 @@ export default function DashboardIndexPage() {
                 </div>
                 <CardTitle className="pt-3">Access as worker</CardTitle>
                 <CardDescription>
-                  Paste a payroll contract address to open the worker view for that payroll.
+                  {enrollments.length > 0
+                    ? "Your wallet is enrolled in the following payrolls."
+                    : "Paste a payroll contract address to open the worker view for that payroll."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Input
-                  value={workerContractInput}
-                  onChange={(event) => setWorkerContractInput(event.target.value)}
-                  placeholder="0x..."
-                  className="font-mono"
-                />
-                <Button variant="outline" className="w-full rounded-xl" onClick={openWorkerPayroll}>
-                  Open Worker Dashboard
-                </Button>
-                {rememberedWorkerPayroll ? (
-                  <Button
-                    variant="ghost"
-                    className="w-full rounded-xl"
-                    onClick={() => router.push(getWorkerDashboardPath(rememberedWorkerPayroll))}
-                  >
-                    Reopen last payroll
-                  </Button>
-                ) : null}
+                {enrollments.length > 0 ? (
+                  <div className="space-y-2">
+                    {enrollments.map((enrollment) => (
+                      <button
+                        key={`${enrollment.contractAddress}-${enrollment.chainId}`}
+                        type="button"
+                        onClick={() => {
+                          if (normalizedAddress) rememberLastWorkerPayroll(normalizedAddress, enrollment.contractAddress)
+                          router.push(getWorkerDashboardPath(enrollment.contractAddress))
+                        }}
+                        className="flex w-full items-center justify-between rounded-2xl border border-border/70 bg-background px-4 py-4 text-left transition hover:bg-amber-50/50"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{shortAddress(enrollment.contractAddress)}</p>
+                          <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{enrollment.contractAddress}</p>
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </button>
+                    ))}
+                    <p className="pt-1 text-xs text-muted-foreground">Not seeing a payroll? Paste an address below.</p>
+                    <Input
+                      value={workerContractInput}
+                      onChange={(event) => setWorkerContractInput(event.target.value)}
+                      placeholder="0x..."
+                      className="font-mono"
+                    />
+                    <Button variant="outline" className="w-full rounded-xl" onClick={openWorkerPayroll}>
+                      Open by address
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      value={workerContractInput}
+                      onChange={(event) => setWorkerContractInput(event.target.value)}
+                      placeholder="0x..."
+                      className="font-mono"
+                    />
+                    <Button variant="outline" className="w-full rounded-xl" onClick={openWorkerPayroll}>
+                      Open Worker Dashboard
+                    </Button>
+                    {rememberedWorkerPayroll ? (
+                      <Button
+                        variant="ghost"
+                        className="w-full rounded-xl"
+                        onClick={() => router.push(getWorkerDashboardPath(rememberedWorkerPayroll))}
+                      >
+                        Reopen last payroll
+                      </Button>
+                    ) : null}
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -25,12 +25,12 @@ interface StatCardProps {
 const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassName }: StatCardProps) => {
   const content = (
     <Card className={cn("flex-1 shadow-sm overflow-x-hidden", cardClassName)}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
+      <CardHeader className="p-3 md:p-4 pb-1 md:pb-1">
+        <CardTitle className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className={cn("text-2xl font-bold flex items-center gap-2", valueClassName)}>{value}</div>
-        <p className="text-xs text-muted-foreground mt-1">
+      <CardContent className="p-3 md:p-4 pt-0 md:pt-0">
+        <div className={cn("text-lg md:text-xl font-bold flex items-center gap-2 break-words", valueClassName)}>{value}</div>
+        <p className="text-[11px] text-muted-foreground mt-1 break-words">
           {subLabel}
           {warning && <span className="block mt-1 text-red-500 font-semibold">{warning}</span>}
         </p>
@@ -139,7 +139,7 @@ export function TreasuryStatCards() {
     : "Computed using the contract's one-hour reserve rule";
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatCard
         title="Balance"
         value={isBalanceLoading ? "Loading..." : `${formatEth(contractBalance, 4)} ETH`}

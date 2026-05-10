@@ -26,7 +26,7 @@ export function WorkerStats({
   const isHighClaimable = treasuryBalanceWei > 0n && (totalClaimableWei * 100n / treasuryBalanceWei) > 50n
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile
         label="Total Workers"
         value={totalWorkers}
@@ -72,10 +72,10 @@ function StatTile({
       "shadow-sm transition-all hover:shadow-md",
       variant === "warning" && "border-amber-500/40 bg-amber-500/5"
     )}>
-      <CardContent className="p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-        <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
-        <p className="mt-1 text-xs text-muted-foreground font-medium">{subLabel}</p>
+      <CardContent className="p-3 md:p-4">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+        <p className="mt-1 text-lg md:text-xl font-bold text-foreground break-words">{value}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground font-medium">{subLabel}</p>
         {footnote && (
           <p className="mt-2 text-[10px] text-muted-foreground/60 italic leading-none">{footnote}</p>
         )}

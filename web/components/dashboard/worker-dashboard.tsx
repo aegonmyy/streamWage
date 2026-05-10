@@ -195,12 +195,12 @@ function StatCard({
       className={cn("rounded-[12px] md:rounded-2xl transition-all overflow-x-hidden", danger && "border-destructive/40 bg-destructive/5", className)}
       onClick={onClick}
     >
-      <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
-        <CardDescription className="text-xs md:text-sm">{title}</CardDescription>
-        <CardTitle className="text-[28px] md:text-2xl font-semibold tracking-tight leading-tight">{value}</CardTitle>
+      <CardHeader className="p-3 md:p-4 pb-1 md:pb-1">
+        <CardDescription className="text-[11px] md:text-xs">{title}</CardDescription>
+        <CardTitle className="text-lg md:text-xl font-semibold tracking-tight leading-tight break-words">{value}</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 md:p-6 pt-0 md:pt-0">
-        <p className="text-[12px] md:text-sm text-muted-foreground">{hint}</p>
+      <CardContent className="p-3 md:p-4 pt-0 md:pt-0">
+        <p className="text-[11px] md:text-xs text-muted-foreground break-words">{hint}</p>
         {children}
       </CardContent>
     </Card>
@@ -210,7 +210,7 @@ function StatCard({
 export function WorkerDashboard() {
   const contract = usePayrollContractConfig()
   const { address, isConnected } = useAccount()
-  const { isConfigured, contractAddress, chainId, isDevMode } = usePayrollRole()
+  const { isConfigured, contractAddress, chainId } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollWorkerData()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -247,7 +247,6 @@ export function WorkerDashboard() {
   const actualClaimableWei = isSolvent ? theoreticalWei : treasuryWei
   const shortfallWei = isSolvent ? 0n : theoreticalWei - treasuryWei
   const isTreasuryEmpty = treasuryWei === 0n
-  const emergencyPaused = false
   const isProposalUrgent = !!data?.pendingProposal?.terminateOnReject
 
   const selectedSection = WORKER_SECTIONS.find((item) => item.id === section) ?? WORKER_SECTIONS[0]
@@ -306,7 +305,7 @@ export function WorkerDashboard() {
     )
   }
 
-  if (!isConnected && !isDevMode) {
+  if (!isConnected) {
     return (
       <WorkerLayout>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">
@@ -488,7 +487,7 @@ export function WorkerDashboard() {
         </Card>
       )}
 
-      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Claimable"
           value={`${formatEth(theoreticalWei)} ETH`}
@@ -513,14 +512,9 @@ export function WorkerDashboard() {
             )}
           </div>
           <div className="mt-3 sm:hidden">
-            {emergencyPaused ? (
-              <Button className="w-full h-9 text-xs rounded-xl bg-muted text-muted-foreground" disabled>
-                Protocol paused — claims disabled
-              </Button>
-            ) : (
-              <Button
+            <Button
                 className="w-full h-9 text-xs gap-2 rounded-xl"
-                disabled={isWalletPending || isTreasuryEmpty || !data.active}
+                disabled={isWalletPending || isTreasuryEmpty}
                 onClick={() =>
                   void executeWrite("Claim earnings", async () =>
                     writeContractAsync({
@@ -532,9 +526,8 @@ export function WorkerDashboard() {
                 }
               >
                 <ArrowUpRight className="h-3.5 w-3.5" />
-                {data.active ? `Claim ${formatEth(actualClaimableWei)} ETH` : "Paused — cannot claim"}
+                Claim {formatEth(actualClaimableWei)} ETH
               </Button>
-            )}
           </div>
         </StatCard>
 
@@ -703,14 +696,14 @@ export function WorkerDashboard() {
 
   const renderEarnings = () => (
     <div className="space-y-4 sm:space-y-6">
-      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard title="Claimable now" value={`${formatEth(theoreticalWei)} ETH`} hint={isSolvent ? "Available to claim immediately." : `Treasury capped: ${formatEth(actualClaimableWei)} ETH`} danger={!isSolvent} />
         <StatCard title="Accrued checkpoint" value={`${formatEth(data.accruedWei)} ETH`} hint="Accrued onchain balance." />
         <StatCard title="Total claimed" value={`${formatEth(data.totalClaimedWei)} ETH`} hint="Lifetime claimed." />
         <StatCard title="Current rate" value={data.timeline === "Trigger" ? "Trigger" : formatRate(data)} hint="Active compensation timeline." />
       </div>
 
-      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2">
+      <div className="grid gap-3 grid-cols-2">
         <Card className="rounded-[12px] md:rounded-2xl overflow-hidden">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Claim earnings</CardTitle>
@@ -738,21 +731,11 @@ export function WorkerDashboard() {
               </div>
             )}
 
-            {emergencyPaused ? (
-              <div className="space-y-3">
-                <Button className="w-full md:w-auto h-10 md:h-9 rounded-xl bg-muted text-muted-foreground" disabled>
-                  Protocol paused — claims disabled
-                </Button>
-                <p className="text-xs text-muted-foreground italic">
-                  The operator has paused the protocol. Claims will resume when the operator lifts the pause.
-                </p>
-              </div>
-            ) : (
-              <AlertDialog>
+            <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button 
                     className="w-full md:w-auto gap-2 rounded-xl h-10 md:h-9" 
-                    disabled={isWalletPending || isTreasuryEmpty || !data.active}
+                    disabled={isWalletPending || isTreasuryEmpty}
                   >
                     <ArrowUpRight className="h-4 w-4" />
                     Claim {formatEth(actualClaimableWei)} ETH
@@ -786,7 +769,6 @@ export function WorkerDashboard() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            )}
             <p className="text-xs text-muted-foreground">
               This sends your claimable balance to {address ? shortAddress(address) : "the connected wallet"}.
             </p>
@@ -799,15 +781,10 @@ export function WorkerDashboard() {
             <CardDescription className="text-xs md:text-sm">Use `claimTo(address)` for custom payout destination.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
-            <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" disabled={!!emergencyPaused} />
-            {emergencyPaused ? (
-              <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled>
-                Protocol paused
-              </Button>
-            ) : (
-              <AlertDialog>
+            <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" />
+            <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty || !data.active}>
+                  <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty}>
                     Claim {formatEth(actualClaimableWei)} ETH To Recipient
                   </Button>
                 </AlertDialogTrigger>
@@ -836,7 +813,6 @@ export function WorkerDashboard() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            )}
           </CardContent>
         </Card>
       </div>
@@ -857,7 +833,7 @@ export function WorkerDashboard() {
             <p className="text-xs text-muted-foreground">No pending proposal.</p>
           ) : (
             <div className="space-y-4">
-              <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
                 <StatCard title="Proposed timeline" value={data.pendingProposal.timeline} hint={formatDuration(data.pendingProposal.intervalSeconds)} />
                 <StatCard title="Proposed rate" value={data.pendingProposal.timeline === "Trigger" ? "Trigger" : `${formatEth(data.pendingProposal.amountPerIntervalWei)} ETH`} hint="Per proposed interval." />
                 <StatCard title="Expires" value={humanExpiry(data.pendingProposal.expiryTimestamp)} hint="Side may call expire." danger />
@@ -988,7 +964,7 @@ export function WorkerDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2">
+      <div className="grid gap-3 grid-cols-2">
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Propose migration</CardTitle>

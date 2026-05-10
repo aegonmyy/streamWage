@@ -156,12 +156,12 @@ function ProposalStatCard({
 
   const content = (
     <Card className={cn("overflow-hidden shadow-sm transition-all hover:shadow-md", borderClass)}>
-      <CardHeader className="pb-2 pt-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
+      <CardHeader className="p-3 md:p-4 pb-1 md:pb-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="text-lg md:text-xl font-bold tracking-tight text-foreground break-words">{value}</div>
       </CardHeader>
-      <CardContent className="pb-4">
-        <p className="text-sm text-muted-foreground/80 leading-tight">{subLabel}</p>
+      <CardContent className="p-3 md:p-4 pt-0 md:pt-0">
+        <p className="text-[11px] text-muted-foreground/80 leading-tight">{subLabel}</p>
       </CardContent>
     </Card>
   )
@@ -335,7 +335,7 @@ export function ProposalsView() {
   return (
     <TooltipProvider>
       <div className="space-y-10">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <ProposalStatCard
             label="Pending Proposals"
             value={stats.pending}

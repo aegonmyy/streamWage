@@ -32,13 +32,14 @@ export function LottieAnimation({
       })
   }, [url])
 
-  if (error) {
-    return <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-  }
+  const spinner = (
+    <div className={`flex items-center justify-center ${className}`}>
+      <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 
-  if (!animationData) {
-    return <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-  }
+  if (error) return spinner
+  if (!animationData) return spinner
 
   return (
     <div className={className}>

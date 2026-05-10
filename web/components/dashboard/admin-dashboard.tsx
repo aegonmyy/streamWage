@@ -152,12 +152,12 @@ function MetricCard({
 
   const content = (
     <Card className={cn("overflow-hidden shadow-sm transition-all hover:shadow-md", borderClass)}>
-      <CardHeader className="pb-2 pt-4">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-        <div className="text-2xl font-bold tracking-tight text-foreground">{value}</div>
+      <CardHeader className="p-3 md:p-4 pb-1 md:pb-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="text-lg md:text-xl font-bold tracking-tight text-foreground break-words">{value}</div>
       </CardHeader>
-      <CardContent className="pb-4">
-        <p className="text-sm text-muted-foreground/80 leading-tight">{subLabel}</p>
+      <CardContent className="p-3 md:p-4 pt-0 md:pt-0">
+        <p className="text-[11px] text-muted-foreground/80 leading-tight">{subLabel}</p>
       </CardContent>
     </Card>
   )
@@ -249,12 +249,12 @@ function StatCard({
 }) {
   const content = (
     <Card className={cn("overflow-x-hidden", danger && "border-destructive/40 bg-destructive/5 shadow-sm")}>
-      <CardHeader className="pb-2">
-        <CardDescription className="text-xs font-medium uppercase tracking-wider">{title}</CardDescription>
-        <CardTitle className="text-2xl font-bold tracking-tight">{value}</CardTitle>
+      <CardHeader className="p-3 md:p-4 pb-1 md:pb-1">
+        <CardDescription className="text-[11px] font-medium uppercase tracking-wider">{title}</CardDescription>
+        <CardTitle className="text-lg md:text-xl font-bold tracking-tight break-words">{value}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-xs text-muted-foreground/80 leading-tight">{hint}</p>
+      <CardContent className="p-3 md:p-4 pt-0 md:pt-0">
+        <p className="text-[11px] text-muted-foreground/80 leading-tight break-words">{hint}</p>
       </CardContent>
     </Card>
   )
@@ -284,7 +284,7 @@ function StatCard({
 export function AdminDashboard() {
   const contract = usePayrollContractConfig()
   const { address: connectedAddress } = useAccount()
-  const { contractAddress, chainId, isConfigured, isDevMode } = usePayrollRole()
+  const { contractAddress, chainId, isConfigured } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollAdminData()
   
   const router = useRouter()
@@ -536,7 +536,7 @@ export function AdminDashboard() {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
         {/* Section 2: Key Metrics */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
           <MetricCard
             label="Treasury Balance"
             value={`${formatEth(treasuryBalanceWei)} ETH`}
@@ -625,7 +625,7 @@ export function AdminDashboard() {
 
   const renderTreasury = () => (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
         <StatCard title="Balance" value={`${formatEth(treasuryBalanceWei)} ETH`} hint="Current treasury balance available to satisfy claims." danger={isLowTreasury} />
         <StatCard title="Runway" value={formatDuration(runwaySeconds)} hint="Estimated from `treasuryRunway()`." />
         <StatCard title="Drain rate" value={formatWeiRatePerDay(totalRatePerSecondWei)} hint="Aggregate active payroll drain." />
@@ -867,7 +867,7 @@ export function AdminDashboard() {
     )
   }
 
-  if (!connectedAddress && !isDevMode) {
+  if (!connectedAddress) {
     return (
       <AdminLayout>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-24 text-center sm:px-6">

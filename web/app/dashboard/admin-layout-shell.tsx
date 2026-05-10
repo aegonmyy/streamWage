@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const { data } = usePayrollAdminData()
-  const { isAdmin, isConnected, isLoading, isDevMode } = usePayrollRole()
+  const { isAdmin, isConnected, isLoading } = usePayrollRole()
   const { address } = useAccount()
   const contractAddress = usePayrollContractAddress()
   const { disconnect } = useDisconnect()
@@ -51,12 +51,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Redirect if not admin
   useEffect(() => {
     if (isLoading) return
-    if (!isConnected && !isDevMode) {
-      router.replace("/dashboard")
-    } else if (!isAdmin && !isDevMode) {
+    if (!isConnected || !isAdmin) {
       router.replace("/dashboard")
     }
-  }, [isAdmin, isConnected, isDevMode, isLoading, router])
+  }, [isAdmin, isConnected, isLoading, router])
 
   // Prevent background scroll when nav is open
   useEffect(() => {

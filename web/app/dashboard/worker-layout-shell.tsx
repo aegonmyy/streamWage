@@ -37,7 +37,7 @@ const SIDEBAR_ITEMS = [
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { data } = usePayrollWorkerData()
-  const { isConnected, isLoading, isDevMode, isAdmin } = usePayrollRole()
+  const { isConnected, isLoading, isAdmin } = usePayrollRole()
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
@@ -48,10 +48,10 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   // Redirect if not connected
   useEffect(() => {
     if (isLoading) return
-    if (!isConnected && !isDevMode) {
+    if (!isConnected) {
       router.replace("/dashboard")
     }
-  }, [isConnected, isDevMode, isLoading, router])
+  }, [isConnected, isLoading, router])
 
   // Prevent background scroll when nav is open
   useEffect(() => {
