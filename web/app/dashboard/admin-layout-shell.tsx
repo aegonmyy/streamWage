@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import {
+  Bell,
   BriefcaseBusiness,
   Clock3,
   LayoutDashboard,
@@ -30,6 +31,7 @@ const SIDEBAR_ITEMS = [
   { id: "proposals", label: "Proposals", description: "Review pending terms.", icon: Clock3 },
   { id: "treasury", label: "Treasury", description: "Fund and manage capital.", icon: Wallet },
   { id: "admins", label: "Admins", description: "Access controls.", icon: Shield },
+  { id: "notifications", label: "Notifications", description: "Slack and Telegram alerts.", icon: Bell },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

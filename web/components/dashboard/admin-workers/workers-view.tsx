@@ -56,7 +56,7 @@ export function WorkersView() {
   const [formTimeline, setFormTimeline] = useState("0")
   const [formAmount, setFormAmount] = useState("")
   const [formInterval, setFormInterval] = useState("")
-  const [form>Metadata<, setForm>Metadata<] = useState("")
+  const [formMetadata, setFormMetadata] = useState("")
   const [formProposalNote, setFormProposalNote] = useState("")
   const [formTerminateOnReject, setFormTerminateOnReject] = useState(false)
   const [pendingWorkerAddress, setPendingWorkerAddress] = useState<string | null>(null)
@@ -134,7 +134,7 @@ export function WorkersView() {
       setFormTimeline("0")
       setFormAmount("")
       setFormInterval("")
-      setForm>Metadata<("")
+      setFormMetadata("")
       setActiveModal("add")
     } else if (action === "adjust-rate") {
       setFormAmount("")
@@ -162,7 +162,7 @@ export function WorkersView() {
       setFormInterval(worker.intervalSeconds > 0n ? String(worker.intervalSeconds) : "")
       setActiveModal("update-interval")
     } else if (action === "update-metadata") {
-      setForm>Metadata<(worker.metadata)
+      setFormMetadata(worker.metadata)
       setActiveModal("update-metadata")
     }
   }
@@ -243,8 +243,8 @@ export function WorkersView() {
               </div>
             )}
             <div className="space-y-2">
-              <Label>>Metadata<</Label>
-              <Input value={form>Metadata<} onChange={(e) => setForm>Metadata<(e.target.value)} placeholder="Alice Chen | Engineering" className="rounded-xl" />
+              <Label>Metadata</Label>
+              <Input value={formMetadata} onChange={(e) => setFormMetadata(e.target.value)} placeholder="Alice Chen | Engineering" className="rounded-xl" />
             </div>
             <Button
               className="w-full h-11 rounded-xl font-bold"
@@ -261,7 +261,7 @@ export function WorkersView() {
                     Number(formTimeline), 
                     formTimeline === "3" ? 0n : parseEther(formAmount || "0"), 
                     formTimeline === "2" ? BigInt(formInterval || "0") : 0n, 
-                    form>Metadata<.trim()
+                    formMetadata.trim()
                   ],
                 })
               })}
@@ -554,13 +554,13 @@ export function WorkersView() {
       <Dialog open={activeModal === "update-metadata"} onOpenChange={(open) => !open && setActiveModal(null)}>
         <DialogContent className="max-w-md rounded-[28px]">
           <DialogHeader>
-            <DialogTitle>Update >Metadata<</DialogTitle>
+            <DialogTitle>Update Metadata</DialogTitle>
             <DialogDescription>Edit metadata for {selectedWorker?.name || (selectedWorker?.address ? `${selectedWorker.address.slice(0,6)}...` : 'worker')}.</DialogDescription>
           </DialogHeader>
           <div className="space-y-5 pt-4">
             <div className="space-y-2">
-              <Label>>Metadata<</Label>
-              <Input value={form>Metadata<} onChange={(e) => setForm>Metadata<(e.target.value)} placeholder="Name, role, department..." className="rounded-xl" />
+              <Label>Metadata</Label>
+              <Input value={formMetadata} onChange={(e) => setFormMetadata(e.target.value)} placeholder="Name, role, department..." className="rounded-xl" />
             </div>
             <Button
               className="w-full h-11 rounded-xl font-bold"
@@ -570,8 +570,8 @@ export function WorkersView() {
                 if (!contract) throw new Error("Contract not configured")
                 return writeContractAsync({
                   ...contract,
-                  functionName: "updateWorker>Metadata<",
-                  args: [selectedWorker.address, form>Metadata<.trim()],
+                  functionName: "updateWorkerMetadata",
+                  args: [selectedWorker.address, formMetadata.trim()],
                 })
               })}
             >

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
 import {
+  Bell,
   Zap,
   Clock3,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const SIDEBAR_ITEMS = [
   { id: "proposals", label: "Proposals", description: "Review and accept terms.", icon: Clock3 },
   { id: "profile", label: "Profile", description: "Wallet and migration tools.", icon: User },
   { id: "support", label: "Support", description: "Help and documentation.", icon: HelpCircle },
+  { id: "notifications", label: "Notifications", description: "Slack and Telegram alerts.", icon: Bell },
 ]
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {

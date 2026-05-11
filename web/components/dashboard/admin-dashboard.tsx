@@ -7,6 +7,7 @@ import { useState, useEffect } from "react"
 import {
   AlertTriangle,
   BadgeCheck,
+  Bell,
   BriefcaseBusiness,
   CheckCircle2,
   ChevronRight,
@@ -75,8 +76,9 @@ import { getDisplayErrorMessage } from "@/lib/error-message"
 import AdminLayout from "@/app/dashboard/admin-layout-shell"
 import { WorkersView } from "./admin-workers/workers-view"
 import { ProposalsView } from "./admin-proposals/proposals-view"
+import { NotificationSettingsView } from "./notification-settings-view"
 
-type AdminSectionId = "overview" | "workers" | "proposals" | "treasury" | "admins"
+type AdminSectionId = "overview" | "workers" | "proposals" | "treasury" | "admins" | "notifications"
 
 export const SIDEBAR_SECTIONS: Array<{
   id: AdminSectionId
@@ -89,6 +91,7 @@ export const SIDEBAR_SECTIONS: Array<{
   { id: "proposals", label: "Proposals", description: "Pending term changes awaiting worker response.", icon: Clock3 },
   { id: "treasury", label: "Treasury", description: "Fund payroll, check runway, withdraw excess.", icon: Wallet },
   { id: "admins", label: "Admins", description: "Manage operators and ownership.", icon: Shield },
+  { id: "notifications", label: "Notifications", description: "Configure Slack and Telegram alerts for payroll events.", icon: Bell },
 ]
 
 function parseEthOrThrow(value: string, label: string) {
@@ -948,6 +951,7 @@ export function AdminDashboard() {
         {section === "proposals" ? <ProposalsView /> : null}
         {section === "treasury" ? renderTreasury() : null}
         {section === "admins" ? renderAdmins() : null}
+        {section === "notifications" ? <NotificationSettingsView /> : null}
       </section>
     </AdminLayout>
   )

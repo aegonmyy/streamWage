@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   ArrowUpRight,
   BadgeCheck,
+  Bell,
   Check,
   Clock3,
   Copy,
@@ -62,8 +63,9 @@ import { getTransactionExplorerUrl, getTransactionToastDescription } from "@/lib
 import { cn } from "@/lib/utils"
 import { getWorkerDashboardPath } from "@/lib/payroll-routing"
 import { getDisplayErrorMessage } from "@/lib/error-message"
+import { NotificationSettingsView } from "./notification-settings-view"
 
-type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support"
+type WorkerSectionId = "overview" | "earnings" | "proposals" | "profile" | "support" | "notifications"
 
 export const WORKER_SECTIONS: Array<{
   id: WorkerSectionId
@@ -77,6 +79,7 @@ export const WORKER_SECTIONS: Array<{
   { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Review and respond to open term proposals.", icon: Clock3 },
   { id: "profile", label: "Identity", eyebrow: "Identity", description: "Wallet info and migration tools.", icon: User },
   { id: "support", label: "Support", eyebrow: "Guide", description: "How things work.", icon: HelpCircle },
+  { id: "notifications", label: "Notifications", eyebrow: "Alerts", description: "Slack and Telegram notification settings.", icon: Bell },
 ]
 
 function toAddressOrThrow(value: string, label: string): Address {
@@ -1163,6 +1166,7 @@ export function WorkerDashboard() {
         {section === "proposals" ? renderProposals() : null}
         {section === "profile" ? renderProfile() : null}
         {section === "support" ? renderSupport() : null}
+        {section === "notifications" ? <NotificationSettingsView /> : null}
       </section>
     </WorkerLayout>
   )

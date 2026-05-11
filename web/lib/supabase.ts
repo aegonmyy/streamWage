@@ -12,3 +12,11 @@ export type WorkerEnrollment = {
   chain_id: number
   created_at: string
 }
+
+export type NotificationSettings = {
+  wallet_address: string
+  slack_webhook_url: string | null
+  telegram_bot_token: string | null
+  telegram_chat_id: string | null
+  updated_at: string
+}

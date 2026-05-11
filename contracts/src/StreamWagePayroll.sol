@@ -41,6 +41,7 @@ contract StreamWagePayroll is Initializable {
         uint256 intervalSeconds;
         bool terminateOnReject;
         uint256 expiryTimestamp;
+        bool wasActive;
     }
 
     address public owner;
@@ -327,7 +328,6 @@ contract StreamWagePayroll is Initializable {
         Worker storage worker = workers[workerAddr];
         if (!worker.exists) revert InvalidWorker();
         if (worker.timeline != Timeline.Trigger) revert InvalidConfiguration();
-        if (!worker.active) revert InvalidConfiguration();
         worker.accruedWei += amountWei;
         emit TriggerPaymentGranted(workerAddr, amountWei);
     }
@@ -381,7 +381,7 @@ contract StreamWagePayroll is Initializable {
     /// @param thresholdSeconds Runway duration in seconds. Set to zero to disable alerts.
     function setLowTreasuryThreshold(
         uint256 thresholdSeconds
-    ) external onlyOwner {
+    ) external onlyOperator {
         lowTreasuryThresholdSeconds = thresholdSeconds;
         emit LowTreasuryThresholdUpdated(thresholdSeconds);
     }
@@ -527,7 +527,7 @@ contract StreamWagePayroll is Initializable {
         // Settle all earned time before pausing — whole intervals and fractional
         // remainder are both credited so no time is lost during the proposal period.
         _settleAndReset(worker);
-
+        bool wasActive = worker.active;
         worker.active = false;
         pendingTerms[workerAddr] = PendingTerms({
             exists: true,
@@ -535,7 +535,8 @@ contract StreamWagePayroll is Initializable {
             amountPerIntervalWei: amountPerIntervalWei,
             intervalSeconds: newIntervalSeconds,
             terminateOnReject: terminateOnReject,
-            expiryTimestamp: block.timestamp + defaultProposalWindow
+            expiryTimestamp: block.timestamp + defaultProposalWindow,
+            wasActive: wasActive
         });
         emit TermsProposed(
             workerAddr,
@@ -576,7 +577,14 @@ contract StreamWagePayroll is Initializable {
         if (!proposal.exists) revert NoPendingProposal();
         if (block.timestamp > proposal.expiryTimestamp)
             revert ProposalExpiredError();
-        _applyRejection(msg.sender, worker, proposal.terminateOnReject, false);
+        bool wasActive = proposal.wasActive;
+        _applyRejection(
+            msg.sender,
+            worker,
+            proposal.terminateOnReject,
+            false,
+            wasActive
+        );
     }
 
     /// @notice Operator cancels a pending proposal and restores the worker to active status.
@@ -587,7 +595,7 @@ contract StreamWagePayroll is Initializable {
         PendingTerms storage proposal = pendingTerms[workerAddr];
         if (!proposal.exists) revert NoPendingProposal();
         delete pendingTerms[workerAddr];
-        worker.active = true;
+        worker.active = proposal.wasActive;
         worker.lastAccruedAt = uint64(block.timestamp);
         emit ProposalCancelled(workerAddr);
     }
@@ -603,7 +611,8 @@ contract StreamWagePayroll is Initializable {
         if (block.timestamp <= proposal.expiryTimestamp)
             revert ProposalNotExpired();
         bool terminated = proposal.terminateOnReject;
-        _applyRejection(workerAddr, worker, terminated, true);
+        bool wasActive = proposal.wasActive;
+        _applyRejection(workerAddr, worker, terminated, true, wasActive);
     }
 
     /// @dev Applies the outcome of a proposal rejection or expiry. If `terminateOnReject`
@@ -614,7 +623,8 @@ contract StreamWagePayroll is Initializable {
         address workerAddr,
         Worker storage worker,
         bool terminateOnReject,
-        bool emitExpiry
+        bool emitExpiry,
+        bool wasActive
     ) internal {
         if (terminateOnReject) {
             worker.active = false;
@@ -626,7 +636,7 @@ contract StreamWagePayroll is Initializable {
                 emit WorkerTerminated(workerAddr);
             }
         } else {
-            worker.active = true;
+            worker.active = wasActive;
             worker.lastAccruedAt = uint64(block.timestamp);
             delete pendingTerms[workerAddr];
             if (emitExpiry) {
