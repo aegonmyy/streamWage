@@ -12,11 +12,9 @@ import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
 import { useEffect } from "react"
 
-interface DashboardHeaderProps {
-  view: "worker" | "admin"
-}
 
-export function DashboardHeader({ view }: DashboardHeaderProps) {
+
+export function DashboardHeader() {
   const { isAdmin, isConnected, isLoading } = usePayrollRole()
   const { address } = useAccount()
   const contract = usePayrollContractConfig()
