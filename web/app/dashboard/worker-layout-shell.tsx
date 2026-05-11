@@ -125,8 +125,16 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
       </div>
 
      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-20">
-        <Sidebar collapsible="icon" className="xl:sticky xl:top-24 xl:self-start">
-          <SidebarTrigger className="absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
+        <Sidebar
+          collapsible="icon"
+          className="..."
+          onMouseEnter={() => setTriggerVisible(true)}
+          onMouseLeave={() => setTriggerVisible(false)}
+        >
+          <SidebarTrigger className={cn(
+            "absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all duration-200",
+            triggerVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+          )} />
           
           <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
            <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
