@@ -335,10 +335,14 @@ export function WorkerTable({
                         </DropdownMenuItem>
                       )}
                       {worker.isTerminated && (
-                        <DropdownMenuItem disabled className="text-sm font-medium text-muted-foreground/50 italic">
-                          Terminated
-                        </DropdownMenuItem>
-                      )}
+   <DropdownMenuItem
+     className="text-sm font-medium text-emerald-600 focus:bg-emerald-500/5"
+     onClick={() => onAction("resume", worker)}
+   >
+     <Play className="h-3.5 w-3.5 mr-2" />
+     Reinstate
+   </DropdownMenuItem>
+ )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
