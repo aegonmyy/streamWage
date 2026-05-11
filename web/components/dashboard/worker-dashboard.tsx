@@ -378,22 +378,24 @@ export function WorkerDashboard() {
               </div>
             </div>
 
-            <IncomingMigrationCard
-              address={address}
-              migrationOldAddress={migrationOldAddress}
-              setMigrationOldAddress={setMigrationOldAddress}
-              incomingMigrationRequests={data.incomingMigrationRequests}
-              isWalletPending={isWalletPending}
-              onAccept={() =>
-                void executeWrite("Accept migration", async () =>
-                  writeContractAsync({
-                    ...contract!,
-                    functionName: "acceptMigration",
-                    args: [toAddressOrThrow(migrationOldAddress, "Old address")],
-                  }),
-                )
-              }
-            />
+           {(data.incomingMigrationRequests?.length ?? 0) > 0 && (
+   <IncomingMigrationCard
+     address={address}
+     migrationOldAddress={migrationOldAddress}
+     setMigrationOldAddress={setMigrationOldAddress}
+     incomingMigrationRequests={data.incomingMigrationRequests}
+     isWalletPending={isWalletPending}
+     onAccept={() =>
+       void executeWrite("Accept migration", async () =>
+         writeContractAsync({
+           ...contract!,
+           functionName: "acceptMigration",
+           args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+         }),
+       )
+     }
+   />
+ )}
 
             <Card className="rounded-[12px] md:rounded-2xl">
               <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
