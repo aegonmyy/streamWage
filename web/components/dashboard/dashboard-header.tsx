@@ -35,7 +35,7 @@ export function DashboardHeader() {
   const RoleIcon = roleIcon
 
   return (
-   <header className="fixed top-0 left-0 right-0 z-[60] hidden border-b border-border/60 bg-card md:flex">
+    <header className="fixed left-0 right-0 top-0 z-[60] hidden border-b border-border/60 bg-card md:flex">
         <div className="flex h-16 w-full items-center justify-between gap-6 px-4 sm:px-8 lg:px-12">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
@@ -122,6 +122,5 @@ export function DashboardHeader() {
           </div>
         </div>
       </header>
-    </div>
   )
 }
