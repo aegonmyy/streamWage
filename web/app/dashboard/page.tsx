@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
   import { decodeEventLog } from "viem"
- import { payrollDeployedEvent, getFactoryContractConfig } from "@/lib/payroll-contract"
+ import { getFactoryContractConfig } from "@/lib/payroll-contract"
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useRouter } from "next/navigation"
@@ -17,7 +17,6 @@ import { useUserPayrolls } from "@/hooks/use-user-payrolls"
 import { useIncomingWorkerMigrations } from "@/hooks/use-incoming-worker-migrations"
 import { useWorkerEnrollments } from "@/hooks/use-worker-enrollments"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
-import { getFactoryContractConfig } from "@/lib/payroll-contract"
 import {
   getAdminDashboardPath,
   getLastOpenedPayroll,
