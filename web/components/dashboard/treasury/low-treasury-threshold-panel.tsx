@@ -103,7 +103,7 @@ export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryTh
             <Input
               id="threshold"
               type="number"
-              placeholder={currentThresholdDays.toString()}
+             placeholder={currentThresholdDays?.toString() ?? "7"}
               value={newThresholdDays}
               onChange={(e) => setNewThresholdDays(e.target.value)}
               min="0"
