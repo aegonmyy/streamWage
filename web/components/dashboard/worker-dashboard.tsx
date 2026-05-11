@@ -689,14 +689,14 @@ export function WorkerDashboard() {
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                  </div>
-                  <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full">
-                    {item.tone === "warning" ? "Attention" : "Event"}
-                  </Badge>
-                </div>
+   <div className="min-w-0 flex-1">
+     <p className="text-sm font-medium text-foreground break-words">{item.title}</p>
+     <p className="mt-1 text-sm text-muted-foreground break-all">{item.detail}</p>
+   </div>
+   <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full shrink-0">
+     {item.tone === "warning" ? "Attention" : "Event"}
+   </Badge>
+ </div>
               </div>
             ))
           )}
@@ -1146,7 +1146,7 @@ export function WorkerDashboard() {
                         href={item.explorerUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                        className="block font-mono text-xs text-primary underline-offset-4 hover:underline truncate"
                       >
                         {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
                       </Link>
