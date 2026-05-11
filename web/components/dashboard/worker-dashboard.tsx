@@ -789,14 +789,17 @@ export function WorkerDashboard() {
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Claim to another address</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Use `claimTo(address)` for custom payout destination.</CardDescription>
+            <CardDescription className="text-xs md:text-sm break-words">Use <code className="font-mono">claimTo(address)</code> for custom payout destination.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
             <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" />
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty}>
-                    Claim {formatEth(actualClaimableWei)} ETH To Recipient
+                    <span className="flex flex-col items-center leading-tight">
+   <span>Claim {formatEth(actualClaimableWei)} ETH</span>
+   <span className="text-[10px] font-normal opacity-70">to recipient</span>
+ </span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
