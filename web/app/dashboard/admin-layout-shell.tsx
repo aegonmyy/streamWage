@@ -131,19 +131,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row">
           <Sidebar collapsible="icon" className="xl:sticky xl:top-24 xl:self-start">
-            <SidebarTrigger className="absolute -right-3 top-20 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
+            <SidebarTrigger className="absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all" />
             
             <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
-              <SidebarHeader className="border-b border-border/70 px-5 py-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Zap className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
-                    </div>
-                    </div>
-                    </SidebarHeader>
+             <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Worker Dashboard</p>
+                </div>
+              </div>
+            </SidebarHeader>
 
               <SidebarNav 
                 section={currentSection} 
