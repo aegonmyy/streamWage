@@ -4,24 +4,24 @@ import { useState, useMemo, useEffect, Fragment } from "react"
 import { useAccount, useWaitForTransactionReceipt, usePublicClient } from "wagmi"
 import { parseEther, getAddress, isAddress, type Address, parseAbiItem } from "viem"
 import { toast } from "sonner"
-import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock3, 
-  Info, 
-  Plus, 
-  Search, 
-  ShieldAlert, 
-  ShieldCheck, 
-  Trash2, 
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Info,
+  Plus,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  Trash2,
   ChevronRight
 } from "lucide-react"
 
-import { 
-  usePayrollAdminData, 
-  type AdminWorkerRecord, 
-  formatEth, 
-  formatDuration, 
+import {
+  usePayrollAdminData,
+  type AdminWorkerRecord,
+  formatEth,
+  formatDuration,
 } from "@/hooks/use-payroll-admin-data"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
 import { usePayrollWrite } from "@/hooks/use-payroll-write"
@@ -52,13 +52,13 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table"
 
 // --- Types & Constants ---
@@ -110,15 +110,15 @@ function formatTimeRemaining(expiryTimestamp: bigint, now: bigint) {
   const minute = 60n
 
   if (diff > day * 2n) {
-    return <span>{diff / day} days { (diff % day) / hour}h</span>
+    return <span>{diff / day} days {(diff % day) / hour}h</span>
   }
-  
+
   if (diff > hour * 1n) {
     const h = diff / hour
     const m = (diff % hour) / minute
     return <span className="text-amber-500 font-medium">{h}h {m}m</span>
   }
-  
+
   return (
     <div className="flex items-center gap-1.5">
       <div className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
@@ -186,7 +186,7 @@ export function ProposalsView() {
   const contract = usePayrollContractConfig()
   const { data, isLoading, refetch } = usePayrollAdminData()
   const publicClient = usePublicClient({ chainId: contract?.chainId })
-  
+
   const [now, setNow] = useState(BigInt(Math.floor(Date.now() / 1000)))
   useEffect(() => {
     const timer = setInterval(() => {
@@ -203,7 +203,7 @@ export function ProposalsView() {
     const fetchNotes = async () => {
       const workers = Array.isArray(data?.workers) ? data.workers : []
       if (!publicClient || !contract || workers.length === 0) return
-      
+
       const workersWithProposals = workers.filter(w => w.pendingProposal)
       if (workersWithProposals.length === 0) return
 
@@ -255,30 +255,30 @@ export function ProposalsView() {
 
   const workers = Array.isArray(data?.workers) ? data.workers : []
   const allProposals = workers.filter(w => w.pendingProposal)
-  
+
   const activeProposals = allProposals.filter(w => w.pendingProposal!.expiryTimestamp > now)
   const expiredProposals = allProposals.filter(w => w.pendingProposal!.expiryTimestamp <= now)
 
   const filteredActiveProposals = useMemo(() => {
     return activeProposals.filter((worker) => {
-      const matchesSearch = 
-        worker.address.toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch =
+        worker.address.toLowerCase().includes(search.toLowerCase()) ||
         worker.metadata.toLowerCase().includes(search.toLowerCase()) ||
         worker.name.toLowerCase().includes(search.toLowerCase())
-      
-      const matchesFilter = 
+
+      const matchesFilter =
         filter === "all" ||
         (filter === "expiring-soon" && worker.pendingProposal!.expiryTimestamp - now < 86400n) ||
         (filter === "terminate-on-reject" && worker.pendingProposal!.terminateOnReject)
-      
+
       return matchesSearch && matchesFilter
     })
   }, [activeProposals, search, filter, now])
 
   const filteredExpiredProposals = useMemo(() => {
     return expiredProposals.filter((worker) => {
-      const matchesSearch = 
-        worker.address.toLowerCase().includes(search.toLowerCase()) || 
+      const matchesSearch =
+        worker.address.toLowerCase().includes(search.toLowerCase()) ||
         worker.metadata.toLowerCase().includes(search.toLowerCase())
       return matchesSearch
     })
@@ -289,7 +289,7 @@ export function ProposalsView() {
     const terminateOnReject = allProposals.filter(w => w.pendingProposal?.terminateOnReject).length
     const pausedByProposal = workers.filter(w => w.status === "paused" && w.pendingProposal).length
     const reviewWindow = data?.defaultProposalWindowSeconds ?? 604800n
-    
+
     return { pending, terminateOnReject, pausedByProposal, reviewWindow }
   }, [allProposals, workers, data?.defaultProposalWindowSeconds])
 
@@ -380,7 +380,7 @@ export function ProposalsView() {
               className="pl-10 rounded-xl"
             />
           </div>
-          
+
           <div className="flex flex-wrap items-center gap-3">
             <Select value={filter} onValueChange={(v) => setFilter(v as ProposalFilter)}>
               <SelectTrigger className="w-[180px] rounded-xl">
@@ -404,7 +404,7 @@ export function ProposalsView() {
           <div className="flex items-center gap-3 px-1">
             <div className="space-y-0.5">
               <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Active Proposals</h2>
-              <p className="text-[11px] text-muted-foreground/60 font-medium">Live reads from pendingTerms(worker) across the indexed worker set.</p>
+
             </div>
             <div className="h-px flex-1 bg-border/40" />
           </div>
@@ -432,7 +432,7 @@ export function ProposalsView() {
 
                     return (
                       <Fragment key={worker.address}>
-                        <TableRow 
+                        <TableRow
                           className={cn(
                             "group border-b border-border/40 transition-colors hover:bg-muted/20",
                             isHighStakes && "border-l-4 border-l-destructive/50",
@@ -483,9 +483,9 @@ export function ProposalsView() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl h-8 px-3"
                               onClick={() => {
                                 setSelectedWorker(worker)
@@ -588,8 +588,8 @@ export function ProposalsView() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             className={cn(
                               "rounded-xl h-8 px-4 font-bold text-xs uppercase tracking-wider",
                               isHighStakes ? "bg-destructive hover:bg-destructive/90" : "bg-primary hover:bg-primary/90"
@@ -663,12 +663,12 @@ export function ProposalsView() {
               {formTimeline !== "3" && (
                 <div className="space-y-2">
                   <Label>Rate (ETH)</Label>
-                  <Input 
-                    value={formAmount} 
-                    onChange={(e) => setFormAmount(e.target.value)} 
-                    type="number" 
-                    placeholder="0.0" 
-                    className="font-mono rounded-xl h-11" 
+                  <Input
+                    value={formAmount}
+                    onChange={(e) => setFormAmount(e.target.value)}
+                    type="number"
+                    placeholder="0.0"
+                    className="font-mono rounded-xl h-11"
                   />
                 </div>
               )}
@@ -676,22 +676,22 @@ export function ProposalsView() {
               {formTimeline === "2" && (
                 <div className="space-y-2">
                   <Label>Interval (seconds)</Label>
-                  <Input 
-                    value={formInterval} 
-                    onChange={(e) => setFormInterval(e.target.value)} 
-                    type="number" 
-                    placeholder="43200" 
-                    className="font-mono rounded-xl h-11" 
+                  <Input
+                    value={formInterval}
+                    onChange={(e) => setFormInterval(e.target.value)}
+                    type="number"
+                    placeholder="43200"
+                    className="font-mono rounded-xl h-11"
                   />
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label>Note (optional)</Label>
-                <Textarea 
-                  value={formProposalNote} 
-                  onChange={(e) => setFormProposalNote(e.target.value)} 
-                  placeholder="Reason for the change, any relevant links..." 
+                <Textarea
+                  value={formProposalNote}
+                  onChange={(e) => setFormProposalNote(e.target.value)}
+                  placeholder="Reason for the change, any relevant links..."
                   className="rounded-xl resize-none h-24"
                 />
               </div>
@@ -705,10 +705,10 @@ export function ProposalsView() {
                     If worker rejects or proposal expires, they will be permanently terminated.
                   </p>
                 </div>
-                <Switch 
+                <Switch
                   id="terminate-toggle"
-                  checked={formTerminateOnReject} 
-                  onCheckedChange={setFormTerminateOnReject} 
+                  checked={formTerminateOnReject}
+                  onCheckedChange={setFormTerminateOnReject}
                 />
               </div>
 
@@ -729,11 +729,11 @@ export function ProposalsView() {
                   const targetAddr = selectedWorker?.address || (formWorkerAddress as Address)
                   if (!isAddress(targetAddr)) throw new Error("Invalid worker address")
                   if (!contract) throw new Error("Contract not configured")
-                  
+
                   const timeline = Number(formTimeline)
                   const amountWei = formTimeline === "3" ? 0n : parseEthOrThrow(formAmount, "Proposed rate")
                   const interval = formTimeline === "2" ? BigInt(formInterval || "0") : 0n
-                  
+
                   return writeContractAsync({
                     ...contract,
                     functionName: "proposeTerms",
@@ -756,12 +756,12 @@ export function ProposalsView() {
             <div className="space-y-5 pt-4">
               <div className="space-y-2">
                 <Label>Days</Label>
-                <Input 
-                  value={formReviewWindowDays} 
-                  onChange={(e) => setFormReviewWindowDays(e.target.value)} 
-                  type="number" 
-                  placeholder="7" 
-                  className="font-mono rounded-xl h-11" 
+                <Input
+                  value={formReviewWindowDays}
+                  onChange={(e) => setFormReviewWindowDays(e.target.value)}
+                  type="number"
+                  placeholder="7"
+                  className="font-mono rounded-xl h-11"
                 />
               </div>
               <Button
@@ -818,8 +818,8 @@ export function ProposalsView() {
             <DialogHeader>
               <DialogTitle>Resolve Expired Proposal</DialogTitle>
               <DialogDescription>
-                {selectedWorker?.pendingProposal?.terminateOnReject 
-                  ? `This will permanently terminate ${selectedWorker?.address.slice(0,6)}...${selectedWorker?.address.slice(-4)}. This cannot be undone.`
+                {selectedWorker?.pendingProposal?.terminateOnReject
+                  ? `This will permanently terminate ${selectedWorker?.address.slice(0, 6)}...${selectedWorker?.address.slice(-4)}. This cannot be undone.`
                   : "Proposal expires and the worker returns to their original terms."
                 }
               </DialogDescription>

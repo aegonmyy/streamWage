@@ -74,13 +74,13 @@ export const WORKER_SECTIONS: Array<{
   description: string
   icon: any
 }> = [
-  { id: "overview", label: "Overview", eyebrow: "Today", description: "Balance, status, and anything that needs action.", icon: LayoutDashboard },
-  { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds and review your pay history.", icon: Wallet },
-  { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Review and respond to open term proposals.", icon: Clock3 },
-  { id: "profile", label: "Identity", eyebrow: "Identity", description: "Wallet info and migration tools.", icon: User },
-  { id: "support", label: "Support", eyebrow: "Guide", description: "How things work.", icon: HelpCircle },
-  { id: "notifications", label: "Notifications", eyebrow: "Alerts", description: "Slack and Telegram notification settings.", icon: Bell },
-]
+    { id: "overview", label: "Overview", eyebrow: "Today", description: "Balance, status, and anything that needs action.", icon: LayoutDashboard },
+    { id: "earnings", label: "Earnings", eyebrow: "Pay", description: "Claim funds and review your pay history.", icon: Wallet },
+    { id: "proposals", label: "Proposals", eyebrow: "Review", description: "Review and respond to open term proposals.", icon: Clock3 },
+    { id: "profile", label: "Identity", eyebrow: "Identity", description: "Wallet info and migration tools.", icon: User },
+    { id: "support", label: "Support", eyebrow: "Guide", description: "How things work.", icon: HelpCircle },
+    { id: "notifications", label: "Notifications", eyebrow: "Alerts", description: "Slack and Telegram notification settings.", icon: Bell },
+  ]
 
 function toAddressOrThrow(value: string, label: string): Address {
   if (!isAddress(value.trim())) throw new Error(`${label} must be a valid address.`)
@@ -194,7 +194,7 @@ function StatCard({
   children?: React.ReactNode
 }) {
   return (
-    <Card 
+    <Card
       className={cn("rounded-[12px] md:rounded-2xl transition-all overflow-x-hidden", danger && "border-destructive/40 bg-destructive/5", className)}
       onClick={onClick}
     >
@@ -378,24 +378,24 @@ export function WorkerDashboard() {
               </div>
             </div>
 
-           {(data.incomingMigrationRequests?.length ?? 0) > 0 && (
-   <IncomingMigrationCard
-     address={address}
-     migrationOldAddress={migrationOldAddress}
-     setMigrationOldAddress={setMigrationOldAddress}
-     incomingMigrationRequests={data.incomingMigrationRequests}
-     isWalletPending={isWalletPending}
-     onAccept={() =>
-       void executeWrite("Accept migration", async () =>
-         writeContractAsync({
-           ...contract!,
-           functionName: "acceptMigration",
-           args: [toAddressOrThrow(migrationOldAddress, "Old address")],
-         }),
-       )
-     }
-   />
- )}
+            {(data.incomingMigrationRequests?.length ?? 0) > 0 && (
+              <IncomingMigrationCard
+                address={address}
+                migrationOldAddress={migrationOldAddress}
+                setMigrationOldAddress={setMigrationOldAddress}
+                incomingMigrationRequests={data.incomingMigrationRequests}
+                isWalletPending={isWalletPending}
+                onAccept={() =>
+                  void executeWrite("Accept migration", async () =>
+                    writeContractAsync({
+                      ...contract!,
+                      functionName: "acceptMigration",
+                      args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+                    }),
+                  )
+                }
+              />
+            )}
 
             <Card className="rounded-[12px] md:rounded-2xl">
               <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
@@ -448,7 +448,7 @@ export function WorkerDashboard() {
                 Expires {humanExpiry(data.pendingProposal.expiryTimestamp)}
               </p>
             </div>
-            
+
             {data.pendingProposal.terminateOnReject && (
               <p className="text-[11px] font-medium text-destructive">
                 Note: Rejection will terminate your employment.
@@ -456,8 +456,8 @@ export function WorkerDashboard() {
             )}
 
             <div className="flex gap-2 pt-1">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="flex-1 h-9 text-xs rounded-xl"
                 onClick={() =>
                   void executeWrite("Accept terms", async () =>
@@ -471,8 +471,8 @@ export function WorkerDashboard() {
               >
                 Accept
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="flex-1 h-9 text-xs rounded-xl bg-white border-amber-200 text-amber-900 hover:bg-amber-100"
                 onClick={() =>
@@ -518,21 +518,21 @@ export function WorkerDashboard() {
           </div>
           <div className="mt-3 sm:hidden">
             <Button
-                className="w-full h-9 text-xs gap-2 rounded-xl"
-                disabled={isWalletPending || isTreasuryEmpty}
-                onClick={() =>
-                  void executeWrite("Claim earnings", async () =>
-                    writeContractAsync({
-                      ...contract!,
-                      functionName: "claim",
-                      args: [],
-                    }),
-                  )
-                }
-              >
-                <ArrowUpRight className="h-3.5 w-3.5" />
-                Claim {formatEth(actualClaimableWei)} ETH
-              </Button>
+              className="w-full h-9 text-xs gap-2 rounded-xl"
+              disabled={isWalletPending || isTreasuryEmpty}
+              onClick={() =>
+                void executeWrite("Claim earnings", async () =>
+                  writeContractAsync({
+                    ...contract!,
+                    functionName: "claim",
+                    args: [],
+                  }),
+                )
+              }
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              Claim {formatEth(actualClaimableWei)} ETH
+            </Button>
           </div>
         </StatCard>
 
@@ -543,8 +543,8 @@ export function WorkerDashboard() {
             !data.active && data.claimableWei > 0n
               ? "Paused — you have claimable funds. Go to Earnings to claim."
               : data.pendingProposal
-              ? "Proposal pending — tap to view"
-              : "Nothing pending."
+                ? "Proposal pending — tap to view"
+                : "Nothing pending."
           }
           danger={!data.active}
           className="cursor-pointer sm:cursor-default"
@@ -617,58 +617,40 @@ export function WorkerDashboard() {
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
         <Card className={cn(isProposalUrgent && "border-destructive/40", "hidden md:block")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {isProposalUrgent ? <AlertTriangle className="h-5 w-5 text-destructive" /> : <BadgeCheck className="h-5 w-5 text-primary" />}
-              Worker Notes
-            </CardTitle>
-            <CardDescription>Plain-English context around your live payroll state.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm text-muted-foreground">
-            <p>
-              If a proposal is pending, your accrual is paused until you respond or the proposal expires.
-            </p>
-            <p>
-              If your timeline is Trigger, your claimable balance only changes when an operator grants a payment.
-            </p>
-            <p className="font-mono text-xs">
-              {isConfigured ? `Role source: ${contractAddress} on chain ${chainId}` : "Contract not configured"}
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest Transactions</CardTitle>
-            <CardDescription>Recent worker-related transactions with explorer links.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No worker transactions indexed yet.</p>
-            ) : (
-              recentTransactions.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-border/70 px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <span className="text-xs text-muted-foreground">({item.actionLabel})</span>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Latest Transactions</CardTitle>
+              <CardDescription>Recent worker-related transactions with explorer links.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentTransactions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No worker transactions indexed yet.</p>
+              ) : (
+                recentTransactions.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-border/70 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-foreground">{item.title}</p>
+                      <span className="text-xs text-muted-foreground">({item.actionLabel})</span>
+                    </div>
+                    {item.explorerUrl ? (
+                      <Link
+                        href={item.explorerUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                      >
+                        {item.txHash}
+                      </Link>
+                    ) : (
+                      <p className="mt-2 font-mono text-xs text-muted-foreground">{item.txHash}</p>
+                    )}
                   </div>
-                  {item.explorerUrl ? (
-                    <Link
-                      href={item.explorerUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 block font-mono text-xs text-primary underline-offset-4 hover:underline"
-                    >
-                      {item.txHash}
-                    </Link>
-                  ) : (
-                    <p className="mt-2 font-mono text-xs text-muted-foreground">{item.txHash}</p>
-                  )}
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
       </div>
 
       <Card>
@@ -689,14 +671,14 @@ export function WorkerDashboard() {
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
-   <div className="min-w-0 flex-1">
-     <p className="text-sm font-medium text-foreground break-words">{item.title}</p>
-     <p className="mt-1 text-sm text-muted-foreground break-all">{item.detail}</p>
-   </div>
-   <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full shrink-0">
-     {item.tone === "warning" ? "Attention" : "Event"}
-   </Badge>
- </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground break-words">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground break-all">{item.detail}</p>
+                  </div>
+                  <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full shrink-0">
+                    {item.tone === "warning" ? "Attention" : "Event"}
+                  </Badge>
+                </div>
               </div>
             ))
           )}
@@ -743,43 +725,43 @@ export function WorkerDashboard() {
             )}
 
             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button 
-                    className="w-full md:w-auto gap-2 rounded-xl h-10 md:h-9" 
-                    disabled={isWalletPending || isTreasuryEmpty}
+              <AlertDialogTrigger asChild>
+                <Button
+                  className="w-full md:w-auto gap-2 rounded-xl h-10 md:h-9"
+                  disabled={isWalletPending || isTreasuryEmpty}
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  Claim {formatEth(actualClaimableWei)} ETH
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirm payout?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {isSolvent
+                      ? `This will send ${formatEth(theoreticalWei)} ETH to your wallet.`
+                      : `This will send the remaining treasury balance (${formatEth(actualClaimableWei)} ETH) to your wallet. The remaining ${formatEth(shortfallWei)} ETH can be claimed later.`
+                    }
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() =>
+                      void executeWrite("Claim earnings", async () =>
+                        writeContractAsync({
+                          ...contract!,
+                          functionName: "claim",
+                          args: [],
+                        }),
+                      )
+                    }
                   >
-                    <ArrowUpRight className="h-4 w-4" />
-                    Claim {formatEth(actualClaimableWei)} ETH
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Confirm payout?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {isSolvent 
-                        ? `This will send ${formatEth(theoreticalWei)} ETH to your wallet.`
-                        : `This will send the remaining treasury balance (${formatEth(actualClaimableWei)} ETH) to your wallet. The remaining ${formatEth(shortfallWei)} ETH can be claimed later.`
-                      }
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Back</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() =>
-                        void executeWrite("Claim earnings", async () =>
-                          writeContractAsync({
-                            ...contract!,
-                            functionName: "claim",
-                            args: [],
-                          }),
-                        )
-                      }
-                    >
-                      Confirm Claim
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                    Confirm Claim
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <p className="text-xs text-muted-foreground">
               This sends your claimable balance to {address ? shortAddress(address) : "the connected wallet"}.
             </p>
@@ -794,39 +776,39 @@ export function WorkerDashboard() {
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
             <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" />
             <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty}>
-                    <span className="flex flex-col items-center leading-tight">
-   <span>Claim {formatEth(actualClaimableWei)} ETH</span>
-   <span className="text-[10px] font-normal opacity-70">to recipient</span>
- </span>
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Claim to custom recipient?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will send {formatEth(actualClaimableWei)} ETH to {claimToAddress || "the entered address"}.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Back</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() =>
-                        void executeWrite("Claim to address", async () =>
-                          writeContractAsync({
-                            ...contract!,
-                            functionName: "claimTo",
-                            args: [toAddressOrThrow(claimToAddress, "Recipient")],
-                          }),
-                        )
-                      }
-                    >
-                      Confirm Payout
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty}>
+                  <span className="flex flex-col items-center leading-tight">
+                    <span>Claim {formatEth(actualClaimableWei)} ETH</span>
+                    <span className="text-[10px] font-normal opacity-70">to recipient</span>
+                  </span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Claim to custom recipient?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will send {formatEth(actualClaimableWei)} ETH to {claimToAddress || "the entered address"}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Back</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() =>
+                      void executeWrite("Claim to address", async () =>
+                        writeContractAsync({
+                          ...contract!,
+                          functionName: "claimTo",
+                          args: [toAddressOrThrow(claimToAddress, "Recipient")],
+                        }),
+                      )
+                    }
+                  >
+                    Confirm Payout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
@@ -982,7 +964,7 @@ export function WorkerDashboard() {
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Propose migration</CardTitle>
-          <CardDescription className="mobile-ellipsis-2 text-xs md:text-sm">Move your worker record to a new wallet.</CardDescription>
+            <CardDescription className="mobile-ellipsis-2 text-xs md:text-sm">Move your worker record to a new wallet.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
             <Input value={migrationAddress} onChange={(event) => setMigrationAddress(event.target.value)} placeholder="New wallet address" className="font-mono h-10 md:h-9 mobile-anywhere" />
@@ -1137,7 +1119,7 @@ export function WorkerDashboard() {
               </div>
               <div className="mt-2 space-y-2">
                 {recentTransactions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No recent indexed worker transactions.</p>
+                  <p className="text-xs text-muted-foreground">No recent transactions.</p>
                 ) : (
                   recentTransactions.map((item) =>
                     item.explorerUrl ? (

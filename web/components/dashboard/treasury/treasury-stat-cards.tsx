@@ -98,8 +98,8 @@ export function TreasuryStatCards() {
   const balanceWarning = isBalanceZero
     ? "Empty — claims will fail"
     : isBelowMinimumReserve
-    ? "Below minimum reserve"
-    : undefined;
+      ? "Below minimum reserve"
+      : undefined;
   const balanceCardClass = isBalanceZero || isBelowMinimumReserve ? "border-red-500 bg-red-50/50 dark:bg-red-950/10" : "bg-card";
   const balanceValueClass = isBalanceZero ? "text-red-500 font-extrabold" : undefined;
 
@@ -107,7 +107,7 @@ export function TreasuryStatCards() {
   const runwayValue = formatRunway(estimatedRunwaySeconds, totalRatePerSecond);
   const runwaySubLabel = "From treasuryRunway()";
   const runwayColorClass = getRunwayColor(estimatedRunwaySeconds);
-  
+
   // Requirement: Left border color coding
   let borderColor = "border-transparent";
   const days = Number(estimatedRunwaySeconds) / 86400;
@@ -120,7 +120,7 @@ export function TreasuryStatCards() {
   const runwayCardClass = totalRatePerSecond !== 0n && estimatedRunwaySeconds > 0n
     ? `border-l-4 ${borderColor} bg-card`
     : "bg-card";
-  
+
   const showRedPulseDot = runwayValue === "< 1 hour";
 
   // Card 3: Daily Drain
@@ -143,7 +143,7 @@ export function TreasuryStatCards() {
       <StatCard
         title="Balance"
         value={isBalanceLoading ? "Loading..." : `${formatEth(contractBalance, 4)} ETH`}
-        subLabel="Current balance"
+        subLabel="Current payroll balance"
         warning={balanceWarning}
         valueClassName={balanceValueClass}
         cardClassName={balanceCardClass}

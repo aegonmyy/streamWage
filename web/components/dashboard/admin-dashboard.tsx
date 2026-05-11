@@ -86,13 +86,13 @@ export const SIDEBAR_SECTIONS: Array<{
   description: string
   icon: any
 }> = [
-  { id: "overview", label: "Overview", description: "Treasury health, headcount, and anything that needs attention.", icon: Zap },
-  { id: "workers", label: "Workers", description: "Add workers, adjust rates, and manage status.", icon: Users },
-  { id: "proposals", label: "Proposals", description: "Pending term changes awaiting worker response.", icon: Clock3 },
-  { id: "treasury", label: "Treasury", description: "Fund payroll, check runway, withdraw excess.", icon: Wallet },
-  { id: "admins", label: "Admins", description: "Manage operators and ownership.", icon: Shield },
-  { id: "notifications", label: "Notifications", description: "Configure Slack and Telegram alerts for payroll events.", icon: Bell },
-]
+    { id: "overview", label: "Overview", description: "Treasury health, headcount, and anything that needs attention.", icon: Zap },
+    { id: "workers", label: "Workers", description: "Add workers, adjust rates, and manage status.", icon: Users },
+    { id: "proposals", label: "Proposals", description: "Pending term changes awaiting worker response.", icon: Clock3 },
+    { id: "treasury", label: "Treasury", description: "Fund payroll, check runway, withdraw excess.", icon: Wallet },
+    { id: "admins", label: "Admins", description: "Manage operators and ownership.", icon: Shield },
+    { id: "notifications", label: "Notifications", description: "Configure Slack and Telegram alerts for payroll events.", icon: Bell },
+  ]
 
 function parseEthOrThrow(value: string, label: string) {
   if (!value.trim()) throw new Error(`${label} is required.`)
@@ -121,13 +121,13 @@ function formatRunway(seconds: bigint) {
   if (seconds > day * 2n) {
     return `${seconds / day} days`
   }
-  
+
   if (seconds > hour * 1n) {
     const h = seconds / hour
     const m = (seconds % hour) / minute
     return `${h}h ${m}m`
   }
-  
+
   return (
     <span className="animate-pulse text-destructive font-bold">
       {seconds / minute} minutes
@@ -289,7 +289,7 @@ export function AdminDashboard() {
   const { address: connectedAddress } = useAccount()
   const { contractAddress, chainId, isConfigured } = usePayrollRole()
   const { data, isLoading, isError, error, refetch } = usePayrollAdminData()
-  
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const section = (searchParams.get("section") as AdminSectionId) || "overview"
@@ -368,7 +368,7 @@ export function AdminDashboard() {
     const highStakesProposals = pendingProposals.filter((w) => w.pendingProposal!.terminateOnReject)
     const lowRunwayWorkers = workers.filter((w) => w.runwaySeconds < lowTreasuryThresholdSeconds)
     const insolvencyCount = workers.filter(w => w.claimableWei > (data?.treasuryBalanceWei ?? 0n)).length
-    
+
     const runwayVariant = runwaySeconds > 86400n * 30n ? "success" : runwaySeconds > 86400n * 7n ? "warning" : "danger"
 
     const alerts = []
@@ -639,7 +639,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Fund treasury</CardTitle>
-            <CardDescription className="mobile-ellipsis-2">Send ETH through the contract’s `fundTreasury()` path.</CardDescription>
+            <CardDescription className="mobile-ellipsis-2">Add ETH to the payroll</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Dialog open={isFundingOpen} onOpenChange={setIsFundingOpen}>
@@ -681,16 +681,14 @@ export function AdminDashboard() {
                 </div>
               </DialogContent>
             </Dialog>
-            <p className="mobile-ellipsis-2 text-sm text-muted-foreground">
-              The treasury section updates when `TreasuryFunded`, `Claimed`, `ExcessWithdrawn`, or payroll state-change events land.
-            </p>
+
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Treasury controls</CardTitle>
-            <CardDescription className="mobile-ellipsis-2">Routine operator actions and owner-only treasury thresholds.</CardDescription>
+
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-2xl border border-border/70 p-4">
@@ -766,9 +764,7 @@ export function AdminDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Access control</CardTitle>
-          <CardDescription>
-            Ownership and admin lists are reconstructed from `OwnerTransferred` and `AdminUpdated` events, with owner verified via live read.
-          </CardDescription>
+
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col gap-3 rounded-2xl border border-border/70 p-4 md:flex-row md:items-center md:justify-between">
@@ -807,7 +803,7 @@ export function AdminDashboard() {
             >
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-foreground">Enabled Admin</p>
+                  <p className="font-medium text-foreground">Enabled Operator</p>
                   <Badge variant="secondary" className="rounded-full">Operator</Badge>
                 </div>
                 <p className="mt-1 font-mono text-xs text-muted-foreground">{admin}</p>
@@ -817,7 +813,7 @@ export function AdminDashboard() {
                 className="rounded-xl"
                 disabled={isWalletPending || !isOwner}
                 onClick={() =>
-                  void executeWrite("Remove admin", async () =>
+                  void executeWrite("Remove Operator", async () =>
                     writeContractAsync({
                       ...contract,
                       functionName: "setAdmin",
@@ -826,14 +822,14 @@ export function AdminDashboard() {
                   )
                 }
               >
-                Remove Admin
+                Remove Operator
               </Button>
             </div>
           ))}
 
           <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-border/70 p-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="font-medium text-foreground">Add Admin</p>
+              <p className="font-medium text-foreground">Add Operator</p>
               <p className="mt-1 text-sm text-muted-foreground">Grants operator access to this address.</p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -842,7 +838,7 @@ export function AdminDashboard() {
                 className="rounded-xl"
                 disabled={isWalletPending || !isOwner}
                 onClick={() =>
-                  void executeWrite("Add admin", async () =>
+                  void executeWrite("Add Operator", async () =>
                     writeContractAsync({
                       ...contract,
                       functionName: "setAdmin",
@@ -851,7 +847,7 @@ export function AdminDashboard() {
                   )
                 }
               >
-                Add Admin
+                Add Operator
               </Button>
             </div>
           </div>
