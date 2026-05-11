@@ -185,9 +185,6 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
        })}
      </div>
     </SidebarProvider>
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+         
   )
 }
