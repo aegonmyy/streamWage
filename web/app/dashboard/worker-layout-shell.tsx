@@ -152,7 +152,39 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           </div>
         </Sidebar>
 
-        <main className="min-w-0 flex-1">
+   
+       <main className="min-w-0 flex-1 pb-20 md:pb-0">
+          {children}
+        </main>
+      </div>
+
+     {/* Mobile Bottom Navigation */}
+     <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t bg-card md:hidden">
+       {SIDEBAR_ITEMS.map((item) => {
+         const Icon = item.icon
+         const isActive = currentSection === item.id
+         const hasDot = item.id === "proposals" && !!data?.pendingProposal
+         return (
+           <button
+             key={item.id}
+             onClick={() => handleSectionChange(item.id)}
+             className={cn(
+               "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
+               isActive ? "text-amber-500" : "text-muted-foreground"
+             )}
+           >
+             <div className="relative">
+               <Icon className="h-5 w-5" />
+               {hasDot && (
+                 <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500" />
+               )}
+             </div>
+            
+           </button>
+         )
+       })}
+     </div>
+    </SidebarProvider>
           {children}
         </main>
       </div>
