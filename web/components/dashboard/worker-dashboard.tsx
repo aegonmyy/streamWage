@@ -378,22 +378,24 @@ export function WorkerDashboard() {
               </div>
             </div>
 
-            <IncomingMigrationCard
-              address={address}
-              migrationOldAddress={migrationOldAddress}
-              setMigrationOldAddress={setMigrationOldAddress}
-              incomingMigrationRequests={data.incomingMigrationRequests}
-              isWalletPending={isWalletPending}
-              onAccept={() =>
-                void executeWrite("Accept migration", async () =>
-                  writeContractAsync({
-                    ...contract!,
-                    functionName: "acceptMigration",
-                    args: [toAddressOrThrow(migrationOldAddress, "Old address")],
-                  }),
-                )
-              }
-            />
+           {(data.incomingMigrationRequests?.length ?? 0) > 0 && (
+   <IncomingMigrationCard
+     address={address}
+     migrationOldAddress={migrationOldAddress}
+     setMigrationOldAddress={setMigrationOldAddress}
+     incomingMigrationRequests={data.incomingMigrationRequests}
+     isWalletPending={isWalletPending}
+     onAccept={() =>
+       void executeWrite("Accept migration", async () =>
+         writeContractAsync({
+           ...contract!,
+           functionName: "acceptMigration",
+           args: [toAddressOrThrow(migrationOldAddress, "Old address")],
+         }),
+       )
+     }
+   />
+ )}
 
             <Card className="rounded-[12px] md:rounded-2xl">
               <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
@@ -687,14 +689,14 @@ export function WorkerDashboard() {
                 )}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{item.title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{item.detail}</p>
-                  </div>
-                  <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full">
-                    {item.tone === "warning" ? "Attention" : "Event"}
-                  </Badge>
-                </div>
+   <div className="min-w-0 flex-1">
+     <p className="text-sm font-medium text-foreground break-words">{item.title}</p>
+     <p className="mt-1 text-sm text-muted-foreground break-all">{item.detail}</p>
+   </div>
+   <Badge variant={item.tone === "warning" ? "destructive" : "secondary"} className="rounded-full shrink-0">
+     {item.tone === "warning" ? "Attention" : "Event"}
+   </Badge>
+ </div>
               </div>
             ))
           )}
@@ -787,14 +789,17 @@ export function WorkerDashboard() {
         <Card className="rounded-[12px] md:rounded-2xl">
           <CardHeader className="p-4 md:p-6 pb-2 md:pb-2">
             <CardTitle className="text-base md:text-xl font-semibold">Claim to another address</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Use `claimTo(address)` for custom payout destination.</CardDescription>
+            <CardDescription className="text-xs md:text-sm break-words">Use <code className="font-mono">claimTo(address)</code> for custom payout destination.</CardDescription>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0 md:pt-0 space-y-4">
             <Input value={claimToAddress} onChange={(event) => setClaimToAddress(event.target.value)} placeholder="0x..." className="font-mono h-10 md:h-9" />
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="outline" className="w-full md:w-auto rounded-xl h-10 md:h-9" disabled={isWalletPending || isTreasuryEmpty}>
-                    Claim {formatEth(actualClaimableWei)} ETH To Recipient
+                    <span className="flex flex-col items-center leading-tight">
+   <span>Claim {formatEth(actualClaimableWei)} ETH</span>
+   <span className="text-[10px] font-normal opacity-70">to recipient</span>
+ </span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -1141,7 +1146,7 @@ export function WorkerDashboard() {
                         href={item.explorerUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                        className="block font-mono text-xs text-primary underline-offset-4 hover:underline truncate"
                       >
                         {shortAddress(item.txHash!)} <span className="text-muted-foreground">({item.actionLabel})</span>
                       </Link>

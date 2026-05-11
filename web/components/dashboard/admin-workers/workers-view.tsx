@@ -422,7 +422,7 @@ export function WorkersView() {
       <Dialog open={activeModal === "pause" || activeModal === "resume"} onOpenChange={(open) => !open && setActiveModal(null)}>
         <DialogContent className="max-w-sm rounded-[28px]">
           <DialogHeader>
-            <DialogTitle>{activeModal === "pause" ? "Pause Worker" : "Resume Worker"}</DialogTitle>
+           <DialogTitle>{activeModal === "pause" ? "Pause Worker" : selectedWorker?.isTerminated ? "Reinstate Worker" : "Resume Worker"}</DialogTitle>
             <DialogDescription>
               {activeModal === "pause" 
                 ? `Pause accrual for ${selectedWorker?.name || (selectedWorker?.address ? `${selectedWorker.address.slice(0,6)}...` : 'worker')}.` 

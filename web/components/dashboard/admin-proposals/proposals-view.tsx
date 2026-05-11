@@ -288,7 +288,7 @@ export function ProposalsView() {
     const pending = allProposals.length
     const terminateOnReject = allProposals.filter(w => w.pendingProposal?.terminateOnReject).length
     const pausedByProposal = workers.filter(w => w.status === "paused" && w.pendingProposal).length
-    const reviewWindow = data?.defaultProposalWindowSeconds ?? 0n
+    const reviewWindow = data?.defaultProposalWindowSeconds ?? 604800n
     
     return { pending, terminateOnReject, pausedByProposal, reviewWindow }
   }, [allProposals, workers, data?.defaultProposalWindowSeconds])

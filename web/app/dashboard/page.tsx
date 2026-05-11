@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+  import { decodeEventLog } from "viem"
+ import { payrollDeployedEvent, getFactoryContractConfig } from "@/lib/payroll-contract"
+
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useRouter } from "next/navigation"
 import { useAccount, useWaitForTransactionReceipt } from "wagmi"
@@ -43,15 +46,27 @@ export default function DashboardIndexPage() {
 
   const [workerContractInput, setWorkerContractInput] = useState("")
 
-  useEffect(() => {
-    if (!normalizedAddress || payrolls.length === 0) return
-    const remembered = getLastOpenedPayroll(normalizedAddress)
-    const chosen = remembered && payrolls.some((item) => item.address === remembered) ? remembered : payrolls[0].address
-    rememberLastOpenedPayroll(normalizedAddress, chosen)
-  }, [normalizedAddress, payrolls])
-
-  useEffect(() => {
+ useEffect(() => {
     if (!receipt.isSuccess || !normalizedAddress) return
+   // Extract deployed contract address from receipt logs and redirect
+   if (receipt.data?.logs) {
+     for (const log of receipt.data.logs) {
+       try {
+         const decoded = decodeEventLog({
+           abi: factory?.abi ?? [],
+           eventName: "PayrollDeployed",
+           data: log.data,
+           topics: log.topics,
+         })
+         const deployedAddress = (decoded.args as { payroll: Address }).payroll
+         if (deployedAddress && normalizedAddress) {
+           rememberLastOpenedPayroll(normalizedAddress, deployedAddress)
+           router.push(getAdminDashboardPath(deployedAddress))
+           return
+         }
+       } catch {}
+     }
+   }
     void refetch()
   }, [normalizedAddress, receipt.isSuccess, refetch])
 

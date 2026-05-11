@@ -32,7 +32,7 @@ export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryTh
   });
 
   const currentThresholdDays = useMemo(() => {
-    if (currentThresholdSeconds === undefined) return 0;
+    if (currentThresholdSeconds === undefined) return null;
     return Number(currentThresholdSeconds) / 86400;
   }, [currentThresholdSeconds]);
 
@@ -94,7 +94,7 @@ export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryTh
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm font-medium">
-          Current threshold: {currentThresholdDays} days ({currentThresholdSeconds?.toString() || "0"} seconds warnings active)
+          Current threshold: {currentThresholdDays === null ? "Loading..." : `${currentThresholdDays} days (${currentThresholdSeconds!.toString()} seconds)`}
         </div>
 
         <div className="grid gap-2">
@@ -103,7 +103,7 @@ export function LowTreasuryThresholdPanel({ refetchTreasuryData }: LowTreasuryTh
             <Input
               id="threshold"
               type="number"
-              placeholder={currentThresholdDays.toString()}
+             placeholder={currentThresholdDays?.toString() ?? "7"}
               value={newThresholdDays}
               onChange={(e) => setNewThresholdDays(e.target.value)}
               min="0"
