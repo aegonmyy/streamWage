@@ -1,7 +1,7 @@
 "use client"
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import {
   Bell,
   Zap,
@@ -40,6 +40,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
   const contractAddress = usePayrollContractAddress()
+  const [triggerVisible, setTriggerVisible] = useState(false)
 
   // Redirect if not connected
   useEffect(() => {
