@@ -56,6 +56,9 @@ Full documentation including architecture, core concepts, contract reference, an
 
 ---
 
+Live demo: https://streamwage.ameenme.dev
+Factory contract: [0xD3608b29C60d3b4F59c28CB5e7C7faD965D0068C](https://hoodi.etherscan.io/address/0xD3608b29C60d3b4F59c28CB5e7C7faD965D0068C#code) (Hoodi Ethereum Testnet)
+
 ## License
 
 MIT
