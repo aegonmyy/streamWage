@@ -1,7 +1,6 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect } from "react"
 import {
   Bell,
   BriefcaseBusiness,
@@ -24,6 +23,8 @@ import { cn } from "@/lib/utils"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { usePayrollContractAddress } from "@/lib/payroll-contract"
 import { getAdminDashboardPath } from "@/lib/payroll-routing"
+import { useState, useEffect } from 'react';
+
 
 
 const SIDEBAR_ITEMS = [
@@ -97,6 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const hasPendingProposals = (Array.isArray(data?.workers) ? data.workers.filter(w => w.pendingProposal).length : 0) > 0
 
+const [triggerVisible, setTriggerVisible] = useState(false)
   return (
     <AdminSignatureGate>
       <SidebarProvider>
