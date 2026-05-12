@@ -19,7 +19,7 @@ export function ThemeToggle() {
       type="button"
       variant="outline"
       size="icon"
-      className="fixed right-4 bottom-4 z-[70] rounded-full bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80"
+      className="fixed right-4 bottom-4 z-[70] rounded-full bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80 dark:hover:bg-green-950 dark:hover:text-green-400 dark:hover:border-green-800"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       aria-label="Toggle theme"
     >
