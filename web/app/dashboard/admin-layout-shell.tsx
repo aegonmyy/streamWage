@@ -24,10 +24,8 @@ import { cn } from "@/lib/utils"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { usePayrollContractAddress } from "@/lib/payroll-contract"
 import { getAdminDashboardPath } from "@/lib/payroll-routing"
-import { useState } from 'react';
 
-// 2. Inside your component, define the state:
-const [triggerVisible, setTriggerVisible] = useState(false);
+
 const SIDEBAR_ITEMS = [
   { id: "overview", label: "Overview", description: "Treasury health and metrics.", icon: LayoutDashboard },
   { id: "workers", label: "Workers", description: "Manage active roster.", icon: Users },
