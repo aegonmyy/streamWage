@@ -78,9 +78,7 @@ export function NotificationSettingsView() {
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Settings are stored per wallet address and used by the StreamWage notification service to route alerts to you directly.
-      </p>
+
     </div>
   )
 }

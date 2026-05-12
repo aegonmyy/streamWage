@@ -49,7 +49,26 @@ const StatCard = ({ title, value, subLabel, warning, valueClassName, cardClassNa
           </TooltipTrigger>
           <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
             <p className="text-xs font-medium leading-relaxed">
-              Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+              This represents how long the current balance can pay the existing time-base workers in the payroll.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  if (title === "Daily Drain") {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="cursor-help h-full">
+              {content}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
+            <p className="text-xs font-medium leading-relaxed">
+              This represents how much ether the time-based workers consume per day.
             </p>
           </TooltipContent>
         </Tooltip>

@@ -67,11 +67,11 @@ export function WorkerTable({
           // Inactive/Trigger at bottom
           const aActive = a.status === "active" && a.timeline !== "Trigger"
           const bActive = b.status === "active" && b.timeline !== "Trigger"
-          
+
           if (aActive && !bActive) return -1
           if (!aActive && bActive) return 1
           if (!aActive && !bActive) return 0
-          
+
           aValue = a.runwaySeconds
           bValue = b.runwaySeconds
         } else if (sortConfig.key === "claimable") {
@@ -179,8 +179,8 @@ export function WorkerTable({
             const isInsufficientTreasury = worker.claimableWei > treasuryBalanceWei
 
             return (
-              <TableRow 
-                key={worker.address} 
+              <TableRow
+                key={worker.address}
                 className={cn(
                   "group border-b border-border/40 transition-colors hover:bg-muted/20",
                   isLowRunway && "border-l-4 border-l-destructive/50",
@@ -242,9 +242,9 @@ export function WorkerTable({
                     <div className="flex items-center gap-1.5">
                       <p className={cn(
                         "text-sm font-bold",
-                        isInsufficientTreasury && treasuryBalanceWei > 0n ? "text-amber-500" : 
-                        isInsufficientTreasury && treasuryBalanceWei === 0n ? "text-destructive" :
-                        "text-foreground"
+                        isInsufficientTreasury && treasuryBalanceWei > 0n ? "text-amber-500" :
+                          isInsufficientTreasury && treasuryBalanceWei === 0n ? "text-destructive" :
+                            "text-foreground"
                       )}>
                         {isInsufficientTreasury ? formatEth(treasuryBalanceWei) : formatEth(worker.claimableWei)} ETH
                         {isInsufficientTreasury && treasuryBalanceWei > 0n && (
@@ -259,7 +259,7 @@ export function WorkerTable({
                           <TooltipContent className="p-3 rounded-xl border-border/60 shadow-xl max-w-xs">
                             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Treasury Cap</p>
                             <p className="text-sm font-medium leading-relaxed">
-                              Theoretical claimable: <span className="font-bold">{formatEth(worker.claimableWei)} ETH</span>. 
+                              Theoretical claimable: <span className="font-bold">{formatEth(worker.claimableWei)} ETH</span>.
                               Treasury only covers <span className="font-bold">{formatEth(treasuryBalanceWei)} ETH</span>.
                             </p>
                           </TooltipContent>
@@ -335,14 +335,14 @@ export function WorkerTable({
                         </DropdownMenuItem>
                       )}
                       {worker.isTerminated && (
-   <DropdownMenuItem
-     className="text-sm font-medium text-emerald-600 focus:bg-emerald-500/5"
-     onClick={() => onAction("resume", worker)}
-   >
-     <Play className="h-3.5 w-3.5 mr-2" />
-     Reinstate
-   </DropdownMenuItem>
- )}
+                        <DropdownMenuItem
+                          className="text-sm font-medium text-emerald-600 focus:bg-emerald-500/5"
+                          onClick={() => onAction("resume", worker)}
+                        >
+                          <Play className="h-3.5 w-3.5 mr-2" />
+                          Reinstate
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -401,7 +401,7 @@ function renderRunwayCell(worker: AdminWorkerRecord) {
       </TooltipTrigger>
       <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
         <p className="text-xs font-medium leading-relaxed">
-          Estimated based on the treasury's free balance only. Does not account for pending worker claims or future funding.
+          This represents how long the current balance can pay the existing time-base workers in the payroll.
         </p>
       </TooltipContent>
     </Tooltip>
@@ -410,7 +410,7 @@ function renderRunwayCell(worker: AdminWorkerRecord) {
 
 function renderStatusBadge(worker: AdminWorkerRecord) {
   const hasPendingProposal = !!worker.pendingProposal
-  
+
   if (worker.status === "active") {
     return (
       <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
@@ -447,5 +447,5 @@ function renderStatusBadge(worker: AdminWorkerRecord) {
 }
 
 const Plus = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="M12 5v14" /></svg>
 )

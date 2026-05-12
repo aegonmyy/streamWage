@@ -103,7 +103,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
             {isAdmin ? "Admin" : "Worker"}
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={copyAddress}
@@ -111,7 +111,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           >
             {formatAddress(address)}
           </button>
-          
+
           <button
             onClick={handleDisconnect}
             aria-label="Disconnect wallet"
@@ -125,7 +125,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         </div>
       </div>
 
-     <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-20">
+      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-24">
         <Sidebar
           collapsible="icon"
           className="..."
@@ -136,9 +136,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
             "absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all duration-200",
             triggerVisible ? "opacity-100" : "opacity-0 pointer-events-none"
           )} />
-          
+
           <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
-           <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
+            <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
               <div className="flex items-start gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
                   <Zap className="h-5 w-5" />
@@ -149,9 +149,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
               </div>
             </SidebarHeader>
 
-            <SidebarNav 
-              section={currentSection} 
-              setSection={handleSectionChange} 
+            <SidebarNav
+              section={currentSection}
+              setSection={handleSectionChange}
               items={SIDEBAR_ITEMS}
               activeClassName="bg-amber-500/10 text-amber-600"
               highlightMap={{
@@ -161,39 +161,39 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
           </div>
         </Sidebar>
 
-   
-       <main className="min-w-0 flex-1 pb-20 md:pb-0">
+
+        <main className="min-w-0 flex-1 pb-20 md:pb-0">
           {children}
         </main>
       </div>
 
-     {/* Mobile Bottom Navigation */}
-     <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t bg-card md:hidden">
-       {SIDEBAR_ITEMS.map((item) => {
-         const Icon = item.icon
-         const isActive = currentSection === item.id
-         const hasDot = item.id === "proposals" && !!data?.pendingProposal
-         return (
-           <button
-             key={item.id}
-             onClick={() => handleSectionChange(item.id)}
-             className={cn(
-               "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
-               isActive ? "text-amber-500" : "text-muted-foreground"
-             )}
-           >
-             <div className="relative">
-               <Icon className="h-5 w-5" />
-               {hasDot && (
-                 <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500" />
-               )}
-             </div>
-            
-           </button>
-         )
-       })}
-     </div>
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t bg-card md:hidden">
+        {SIDEBAR_ITEMS.map((item) => {
+          const Icon = item.icon
+          const isActive = currentSection === item.id
+          const hasDot = item.id === "proposals" && !!data?.pendingProposal
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleSectionChange(item.id)}
+              className={cn(
+                "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
+                isActive ? "text-amber-500" : "text-muted-foreground"
+              )}
+            >
+              <div className="relative">
+                <Icon className="h-5 w-5" />
+                {hasDot && (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-amber-500" />
+                )}
+              </div>
+
+            </button>
+          )
+        })}
+      </div>
     </SidebarProvider>
-         
+
   )
 }

@@ -165,7 +165,7 @@ function MetricCard({
     </Card>
   )
 
-  if (label === "Runway") {
+  if (label === "Safe withdrawable") {
     return (
       <TooltipProvider>
         <Tooltip>
@@ -176,7 +176,7 @@ function MetricCard({
           </TooltipTrigger>
           <TooltipContent className="max-w-[240px] p-3 rounded-xl border-border/60 shadow-xl">
             <p className="text-xs font-medium leading-relaxed">
-              Estimated based on the treasury&apos;s free balance only. Does not account for pending worker claims or future funding.
+              This represent the ETH amount you can safely withdraw from this payroll that doesn't affect workers.
             </p>
           </TooltipContent>
         </Tooltip>
@@ -601,7 +601,7 @@ export function AdminDashboard() {
               alerts
             ) : (
               <AlertRow
-                title="Everything looks good — no urgent actions."
+                title="Everything looks good, no urgent actions."
                 variant="success"
                 icon={CheckCircle2}
               />
