@@ -1,9 +1,9 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import {
   Bell,
-  BriefcaseBusiness,
   Clock3,
   LayoutDashboard,
   Shield,
@@ -23,9 +23,6 @@ import { cn } from "@/lib/utils"
 import { LottieAnimation } from "@/components/ui/lottie-animation"
 import { usePayrollContractAddress } from "@/lib/payroll-contract"
 import { getAdminDashboardPath } from "@/lib/payroll-routing"
-import { useState, useEffect } from 'react';
-
-
 
 const SIDEBAR_ITEMS = [
   { id: "overview", label: "Overview", description: "Treasury health and metrics.", icon: LayoutDashboard },
@@ -37,7 +34,6 @@ const SIDEBAR_ITEMS = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
   const router = useRouter()
   const { data } = usePayrollAdminData()
   const { isAdmin, isConnected, isLoading } = usePayrollRole()
@@ -45,8 +41,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const contractAddress = usePayrollContractAddress()
   const { disconnect } = useDisconnect()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
 
-  // Redirect if not admin
+  // ALL hooks before any early returns
+  const [triggerVisible, setTriggerVisible] = useState(false)
+
   useEffect(() => {
     if (isLoading) return
     if (!isConnected || !isAdmin) {
@@ -54,9 +53,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isAdmin, isConnected, isLoading, router])
 
-  const searchParams = useSearchParams()
-
-  // Determine current section based on query param
   const currentSection = searchParams.get("section") || "overview"
 
   const handleSectionChange = (id: string) => {
@@ -78,10 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const copyAddress = () => {
     if (address) {
       navigator.clipboard.writeText(address)
-      toast({
-        title: "Copied!",
-        description: "Address copied to clipboard",
-      })
+      toast({ title: "Copied!", description: "Address copied to clipboard" })
     }
   }
 
@@ -98,7 +91,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const hasPendingProposals = (Array.isArray(data?.workers) ? data.workers.filter(w => w.pendingProposal).length : 0) > 0
 
-const [triggerVisible, setTriggerVisible] = useState(false)
   return (
     <AdminSignatureGate>
       <SidebarProvider>
@@ -110,7 +102,6 @@ const [triggerVisible, setTriggerVisible] = useState(false)
               Admin
             </div>
           </div>
-          
           <div className="flex items-center gap-3">
             <button
               onClick={copyAddress}
@@ -118,7 +109,6 @@ const [triggerVisible, setTriggerVisible] = useState(false)
             >
               {formatAddress(address)}
             </button>
-            
             <button
               onClick={handleDisconnect}
               aria-label="Disconnect wallet"
@@ -132,33 +122,33 @@ const [triggerVisible, setTriggerVisible] = useState(false)
           </div>
         </div>
 
-      <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-20">
-         <Sidebar
-          collapsible="icon"
-          className="..."
-          onMouseEnter={() => setTriggerVisible(true)}
-          onMouseLeave={() => setTriggerVisible(false)}
-        >
-          <SidebarTrigger className={cn(
-            "absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all duration-200",
-            triggerVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-          )} />
-            
-            <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
-             <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-                  <Zap className="h-5 w-5" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Worker Dashboard</p>
-                </div>
-              </div>
-            </SidebarHeader>
+        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-20">
+          <Sidebar
+            collapsible="icon"
+            className="xl:sticky xl:top-24 xl:self-start"
+            onMouseEnter={() => setTriggerVisible(true)}
+            onMouseLeave={() => setTriggerVisible(false)}
+          >
+            <SidebarTrigger className={cn(
+              "absolute -right-3 top-64 z-20 h-8 w-8 rounded-full border border-border bg-card shadow-sm hover:bg-accent transition-all duration-200",
+              triggerVisible ? "opacity-100" : "opacity-0 pointer-events-none"
+            )} />
 
-              <SidebarNav 
-                section={currentSection} 
-                setSection={handleSectionChange} 
+            <div className="flex h-full flex-col overflow-hidden rounded-[28px] border border-border/70 bg-card group-data-[collapsible=icon]:w-12 group-data-[collapsible=icon]:rounded-xl transition-all duration-300 shadow-sm">
+              <SidebarHeader className="border-b border-border/70 px-5 py-5 group-data-[collapsible=icon]:hidden">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground">Admin Dashboard</p>
+                  </div>
+                </div>
+              </SidebarHeader>
+
+              <SidebarNav
+                section={currentSection}
+                setSection={handleSectionChange}
                 items={SIDEBAR_ITEMS}
                 highlightMap={{
                   proposals: hasPendingProposals,
@@ -167,38 +157,37 @@ const [triggerVisible, setTriggerVisible] = useState(false)
             </div>
           </Sidebar>
 
-         <main className="min-w-0 flex-1 pb-20 md:pb-0">
+          <main className="min-w-0 flex-1 pb-20 md:pb-0">
             {children}
           </main>
         </div>
 
-       {/* Mobile Bottom Navigation */}
-       <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t bg-card md:hidden">
-         {SIDEBAR_ITEMS.map((item) => {
-           const Icon = item.icon
-           const isActive = currentSection === item.id
-           const hasDot = item.id === "proposals" && hasPendingProposals
-           return (
-             <button
-               key={item.id}
-               onClick={() => handleSectionChange(item.id)}
-               className={cn(
-                 "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
-                 isActive ? "text-blue-500" : "text-muted-foreground"
-               )}
-             >
-               <div className="relative">
-                 <Icon className="h-5 w-5" />
-                 {hasDot && (
-                   <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" />
-                 )}
-               </div>
-             
-             </button>
-           )
-         })}
-       </div>
-        </SidebarProvider>
-      </AdminSignatureGate>
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-stretch border-t bg-card md:hidden">
+          {SIDEBAR_ITEMS.map((item) => {
+            const Icon = item.icon
+            const isActive = currentSection === item.id
+            const hasDot = item.id === "proposals" && hasPendingProposals
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleSectionChange(item.id)}
+                className={cn(
+                  "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
+                  isActive ? "text-blue-500" : "text-muted-foreground"
+                )}
+              >
+                <div className="relative">
+                  <Icon className="h-5 w-5" />
+                  {hasDot && (
+                    <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" />
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </SidebarProvider>
+    </AdminSignatureGate>
   )
 }
