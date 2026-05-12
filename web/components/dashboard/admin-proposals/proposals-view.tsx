@@ -245,7 +245,7 @@ export function ProposalsView() {
   const [formReviewWindowDays, setFormReviewWindowDays] = useState("")
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash, query: { enabled: Boolean(hash) } })
 
   useEffect(() => {
     if (receipt.isSuccess) {

@@ -93,11 +93,20 @@ export function formatRate(worker: Pick<AdminWorkerRecord, "timeline" | "amountP
   return `${amount} ETH / ${worker.timeline === "Custom" ? formatDuration(worker.intervalSeconds) : worker.timeline.toLowerCase()}`
 }
 
-export function formatEth(value: bigint, maximumFractionDigits = 4) {
+export function formatEth(value: bigint | number | string | null | undefined, maximumFractionDigits = 4) {
+  if (value === null || value === undefined) return "0"
+
+  let wei: bigint
+  try {
+    wei = typeof value === "bigint" ? value : BigInt(value)
+  } catch {
+    return "0"
+  }
+
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits,
-  }).format(Number(formatEther(value)))
+  }).format(Number(formatEther(wei)))
 }
 
 export function formatWeiRatePerDay(value: bigint) {

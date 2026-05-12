@@ -11,7 +11,7 @@ interface LottieAnimationProps {
 }
 
 export function LottieAnimation({ 
-  url = "https://lottie.host/f4f27a0e-8310-4e05-82e7-0e9ac2754d83/animation.json", 
+  url,
   className = "h-24 w-24",
   loop = true,
   autoplay = true
@@ -20,6 +20,7 @@ export function LottieAnimation({
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    if (!url) return
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch animation")

@@ -46,7 +46,7 @@ export default function DashboardIndexPage() {
     error: enrollmentsError,
   } = useWorkerEnrollments(normalizedAddress)
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash, query: { enabled: Boolean(hash) } })
 
   const [workerContractInput, setWorkerContractInput] = useState("")
 

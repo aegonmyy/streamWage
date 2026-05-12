@@ -305,7 +305,7 @@ export function AdminDashboard() {
   const [ownershipAddress, setOwnershipAddress] = useState("")
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash, query: { enabled: Boolean(hash) } })
 
   useEffect(() => {
     if (!isError || !error) return

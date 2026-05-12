@@ -230,7 +230,7 @@ export function WorkerDashboard() {
   }, [contract, router])
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash, query: { enabled: Boolean(hash) } })
 
   useEffect(() => {
     if (!isError || !error) return
@@ -270,7 +270,7 @@ export function WorkerDashboard() {
 
   useEffect(() => {
     if (receipt.isSuccess) {
-      Promise.all([refetch(), refetchTreasury()])
+      Promise.all([refetch(), refetchTreasury()]).catch(() => {})
     }
   }, [receipt.isSuccess, refetch, refetchTreasury])
 
@@ -615,40 +615,40 @@ export function WorkerDashboard() {
         </CardContent>
       </Card>
 
-     <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
-  <Card className={cn(isProposalUrgent && "border-destructive/40", "hidden md:block")}>
-    <CardHeader>
-      <CardTitle>Latest Transactions</CardTitle>
-      <CardDescription>Recent worker-related transactions with explorer links.</CardDescription>
-    </CardHeader>
-    <CardContent className="space-y-3">
-      {recentTransactions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No worker transactions indexed yet.</p>
-      ) : (
-        recentTransactions.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-border/70 px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-              <span className="text-xs text-muted-foreground">({item.actionLabel})</span>
-            </div>
-            {item.explorerUrl ? (
-              <Link
-                href={item.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 block font-mono text-xs text-primary underline-offset-4 hover:underline"
-              >
-                {item.txHash}
-              </Link>
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.35fr]">
+        <Card className={cn(isProposalUrgent && "border-destructive/40", "hidden md:block")}>
+          <CardHeader>
+            <CardTitle>Latest Transactions</CardTitle>
+            <CardDescription>Recent worker-related transactions with explorer links.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No worker transactions indexed yet.</p>
             ) : (
-              <p className="mt-2 font-mono text-xs text-muted-foreground">{item.txHash}</p>
+              recentTransactions.map((item) => (
+                <div key={item.id} className="rounded-2xl border border-border/70 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
+                    <span className="text-xs text-muted-foreground">({item.actionLabel})</span>
+                  </div>
+                  {item.explorerUrl ? (
+                    <Link
+                      href={item.explorerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 block font-mono text-xs text-primary underline-offset-4 hover:underline"
+                    >
+                      {item.txHash}
+                    </Link>
+                  ) : (
+                    <p className="mt-2 font-mono text-xs text-muted-foreground">{item.txHash}</p>
+                  )}
+                </div>
+              ))
             )}
-          </div>
-        ))
-      )}
-    </CardContent>
-  </Card>
-</div>
+          </CardContent>
+        </Card>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>

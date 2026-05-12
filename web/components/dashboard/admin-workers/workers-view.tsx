@@ -62,7 +62,7 @@ export function WorkersView() {
   const [pendingWorkerAddress, setPendingWorkerAddress] = useState<string | null>(null)
 
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
+  const receipt = useWaitForTransactionReceipt({ hash, query: { enabled: Boolean(hash) } })
 
   useEffect(() => {
     if (!receipt.isSuccess) return
