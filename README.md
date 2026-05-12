@@ -2,7 +2,7 @@
 
 Prefunded on-chain ETH payroll. Employers deposit ETH upfront, workers accrue earnings over time and claim whenever they want. No intermediaries, no scheduled pushes.
 
-Built with Solidity `^0.8.24`, OpenZeppelin upgradeable contracts, and a beacon proxy deployment pattern.
+Built with Solidity `^0.8.24`, OpenZeppelin upgradeable contracts, and a beacon proxy deployment pattern..
 
 ---
 
