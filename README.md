@@ -17,7 +17,7 @@ Built with Solidity `^0.8.24`, OpenZeppelin upgradeable contracts, and a beacon 
 
 ## How it works
 
-1. Deploy the factory once — it creates the beacon and implementation automatically.
+1. Deploy the factory once , it creates the beacon and implementation automatically.
 2. Any wallet calls `deployPayroll(address initialOwner)` to get their own payroll instance.
 3. Fund the treasury, add workers, done.
 
@@ -44,7 +44,7 @@ forge script script/Deploy.s.sol --rpc-url <RPC_URL> --broadcast
 
 ## Upgradeability
 
-All proxies share one implementation via an `UpgradeableBeacon`. Upgrading the beacon upgrades every instance simultaneously. The beacon owner has full upgrade authority — this is an intentional centralization tradeoff documented in the design decisions.
+All proxies share one implementation via an `UpgradeableBeacon`. Upgrading the beacon upgrades every instance simultaneously. The beacon owner has full upgrade authority, this is an intentional centralization tradeoff documented in the design decisions.
 
 ---
 
