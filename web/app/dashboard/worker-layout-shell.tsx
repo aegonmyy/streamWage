@@ -128,7 +128,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
       <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-8 md:flex-row md:pt-24">
         <Sidebar
           collapsible="icon"
-          className="..."
+          className="xl:sticky xl:top-24 xl:self-start"
           onMouseEnter={() => setTriggerVisible(true)}
           onMouseLeave={() => setTriggerVisible(false)}
         >
