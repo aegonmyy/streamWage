@@ -26,9 +26,13 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "StreamWage - On-chain Payroll Protocol",
   description:
-    "Prefunded ETH payroll protocol with real-time streaming wages and pull-based worker claims.",
+    "Prefunded ETH payroll protocol with real-time streaming wages",
   icons: {
     icon: [
+      {
+        url: "/favicon.svg",
+        type: "image/svg+xml",
+      },
       {
         url: "/icon-light-32x32.png",
         media: "(prefers-color-scheme: light)",
