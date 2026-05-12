@@ -52,7 +52,7 @@ All proxies share one implementation via an `UpgradeableBeacon`. Upgrading the b
 
 Full documentation including architecture, core concepts, contract reference, and design decisions is available at the Gitbook.
 
-> 📖 [StreamWage Docs](#) ← replace with your Gitbook URL
+> 📖 [StreamWage Docs](https://alameen.gitbook.io/streamwage)
 
 ---
 
