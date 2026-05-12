@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { getAddress, isAddress, type Address } from "viem"
-import { supabase } from "@/lib/supabase"
+import { isSupabaseConfigured, requireSupabase } from "@/lib/supabase"
 
 export type WorkerEnrollment = {
   contractAddress: Address
@@ -12,11 +12,12 @@ export type WorkerEnrollment = {
 export function useWorkerEnrollments(workerAddress: Address | undefined) {
   return useQuery({
     queryKey: ["worker-enrollments", workerAddress],
-    enabled: !!workerAddress,
+    enabled: Boolean(workerAddress && isSupabaseConfigured),
     staleTime: 30_000,
     queryFn: async (): Promise<WorkerEnrollment[]> => {
       if (!workerAddress) return []
 
+      const supabase = requireSupabase()
       const { data, error } = await supabase
         .from("worker_enrollments")
         .select("contract_address, chain_id")
@@ -44,6 +45,9 @@ export async function registerWorkerEnrollment({
   contractAddress: Address
   chainId: number
 }) {
+  if (!isSupabaseConfigured) return
+
+  const supabase = requireSupabase()
   const { error } = await supabase.from("worker_enrollments").upsert(
     {
       worker_address: workerAddress.toLowerCase(),

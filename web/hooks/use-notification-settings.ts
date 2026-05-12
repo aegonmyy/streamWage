@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useAccount } from "wagmi"
-import { supabase } from "@/lib/supabase"
+import { isSupabaseConfigured, requireSupabase } from "@/lib/supabase"
 
 export interface NotificationSettings {
   slackWebhookUrl: string
@@ -52,8 +52,14 @@ export function useNotificationSettings() {
       if (cached) setSettings(JSON.parse(cached))
     } catch {}
 
+    if (!isSupabaseConfigured) {
+      setSaved(false)
+      return
+    }
+
     // Then fetch from Supabase and reconcile
     setLoading(true)
+    const supabase = requireSupabase()
     supabase
       .from("notification_settings")
       .select("*")
@@ -76,7 +82,10 @@ export function useNotificationSettings() {
   const save = useCallback(
     async (next: NotificationSettings) => {
       if (!address) return
+      if (!isSupabaseConfigured) return
+
       const row = toRow(address, next)
+      const supabase = requireSupabase()
       await supabase.from("notification_settings").upsert(row, {
         onConflict: "wallet_address",
       })
@@ -92,6 +101,9 @@ export function useNotificationSettings() {
 
   const clear = useCallback(async () => {
     if (!address) return
+    if (!isSupabaseConfigured) return
+
+    const supabase = requireSupabase()
     await supabase
       .from("notification_settings")
       .delete()

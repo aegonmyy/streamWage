@@ -1,35 +1,21 @@
 "use client"
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { Shield, Zap, Wallet, AlertCircle } from "lucide-react"
+import { Moon, Shield, Sun, Wallet, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { usePayrollRole } from "@/hooks/use-payroll-role"
-import { useReadContract, useAccount, useWaitForTransactionReceipt } from "wagmi"
-import { usePayrollContractConfig } from "@/lib/payroll-contract"
-import { usePayrollWrite } from "@/hooks/use-payroll-write"
-import { toast } from "sonner"
-import { getTransactionToastDescription } from "@/lib/transaction-links"
 import { cn } from "@/lib/utils"
-import { useEffect } from "react"
-
-
+import { useTheme } from "next-themes"
+import { useEffect, useState } from "react"
 
 export function DashboardHeader() {
   const { isAdmin, isConnected, isLoading } = usePayrollRole()
-  const { address } = useAccount()
-  const contract = usePayrollContractConfig()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-  const { data: owner } = useReadContract({
-    address: contract?.address,
-    abi: contract?.abi,
-    functionName: 'owner',
-  })
+  useEffect(() => setMounted(true), [])
 
-  const isOwner = address && owner && address.toLowerCase() === (owner as string).toLowerCase()
-
-  const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
-  const receipt = useWaitForTransactionReceipt({ hash })
-
+  const isDark = mounted && resolvedTheme === "dark"
   const roleLabel = !isConnected ? "Not connected" : isLoading ? "Checking role…" : isAdmin ? "Admin" : "Worker"
   const roleIcon = !isConnected ? Wallet : isAdmin ? Shield : Wallet
   const RoleIcon = roleIcon
@@ -49,6 +35,17 @@ export function DashboardHeader() {
               <RoleIcon className="h-4 w-4" aria-hidden />
               <span className={cn(isConnected && !isLoading ? "text-foreground" : undefined)}>{roleLabel}</span>
             </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              aria-label="Toggle theme"
+            >
+              {isDark ? <Sun className="h-4 w-4" aria-hidden /> : <Moon className="h-4 w-4" aria-hidden />}
+            </Button>
 
             <ConnectButton.Custom>
               {({

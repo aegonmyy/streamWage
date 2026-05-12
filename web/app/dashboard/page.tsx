@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-  import { decodeEventLog } from "viem"
- import { getFactoryContractConfig } from "@/lib/payroll-contract"
+import { decodeEventLog } from "viem"
+import { getFactoryContractConfig } from "@/lib/payroll-contract"
 
 import { ConnectButton } from "@rainbow-me/rainbowkit"
 import { useRouter } from "next/navigation"
@@ -26,6 +26,7 @@ import {
   rememberLastWorkerPayroll,
 } from "@/lib/payroll-routing"
 import { getTransactionToastDescription } from "@/lib/transaction-links"
+import { isSupabaseConfigured } from "@/lib/supabase"
 import { toast } from "sonner"
 
 function shortAddress(address: Address) {
@@ -39,13 +40,17 @@ export default function DashboardIndexPage() {
   const factory = getFactoryContractConfig()
   const { data: payrolls = [], isLoading, refetch } = useUserPayrolls()
   const { data: incomingMigrations = [], isLoading: isLoadingIncomingMigrations } = useIncomingWorkerMigrations()
-  const { data: enrollments = [], isLoading: isLoadingEnrollments } = useWorkerEnrollments(normalizedAddress)
+  const {
+    data: enrollments = [],
+    isLoading: isLoadingEnrollments,
+    error: enrollmentsError,
+  } = useWorkerEnrollments(normalizedAddress)
   const { writeContractAsync, data: hash, isPending: isWalletPending } = usePayrollWrite()
   const receipt = useWaitForTransactionReceipt({ hash })
 
   const [workerContractInput, setWorkerContractInput] = useState("")
 
- useEffect(() => {
+  useEffect(() => {
     if (!receipt.isSuccess || !normalizedAddress) return
    // Extract deployed contract address from receipt logs and redirect
    if (receipt.data?.logs) {
@@ -67,7 +72,14 @@ export default function DashboardIndexPage() {
      }
    }
     void refetch()
-  }, [normalizedAddress, receipt.isSuccess, refetch])
+  }, [factory?.abi, normalizedAddress, receipt.data?.logs, receipt.isSuccess, refetch, router])
+
+  useEffect(() => {
+    if (!enrollmentsError) return
+    const message =
+      enrollmentsError instanceof Error ? enrollmentsError.message : "Failed to load worker enrollments."
+    toast.error("Worker enrollments", { description: message })
+  }, [enrollmentsError])
 
   async function deployPayroll() {
     if (!factory || !normalizedAddress) return
@@ -242,9 +254,13 @@ export default function DashboardIndexPage() {
                 </div>
                 <CardTitle className="pt-3">Access as worker</CardTitle>
                 <CardDescription>
-                  {enrollments.length > 0
-                    ? "You're enrolled in these payrolls."
-                    : "Paste a contract address to open the worker view."}
+                  {!isSupabaseConfigured
+                    ? "Supabase is not configured, so enrollments can't be auto-detected."
+                    : isLoadingEnrollments
+                      ? "Checking enrollments for this wallet…"
+                      : enrollments.length > 0
+                        ? "You're enrolled in these payrolls."
+                        : "Paste a contract address to open the worker view."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
