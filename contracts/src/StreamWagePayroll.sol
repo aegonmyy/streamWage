@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @title StreamWagePayroll
-/// @author StreamWage
+/// @author Alameen
 /// @notice Prefunded ETH payroll contract with pull-based worker claims.
 /// @dev Workers accrue ETH over fixed intervals (hourly, monthly, or custom) or via
 ///      operator-triggered grants. All earned funds are held on-chain and claimed at
