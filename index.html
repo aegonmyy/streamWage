@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>dripWage — Stream Wages on VOI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d0b14;
+  --bg2:      #13101f;
+  --bg3:      #1a1630;
+  --purple:   #7c3aed;
+  --purple2:  #9d5cff;
+  --teal:     #0fd9c0;
+  --teal2:    #06b6a0;
+  --white:    #f5f2ff;
+  --muted:    #8b85a8;
+  --border:   rgba(124,58,237,0.18);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* custom cursor */
+.cursor {
+  width: 12px; height: 12px;
+  background: var(--teal);
+  border-radius: 50%;
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform 0.15s ease;
+  mix-blend-mode: screen;
+}
+.cursor-ring {
+  width: 36px; height: 36px;
+  border: 1.5px solid rgba(15,217,192,0.4);
+  border-radius: 50%;
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9998;
+  transition: transform 0.35s cubic-bezier(.23,1,.32,1), width 0.3s, height 0.3s, border-color 0.3s;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top:0; left:0; right:0;
+  z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.2rem 4rem;
+  background: rgba(13,11,20,0.7);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: padding 0.3s;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 0.75rem;
+  text-decoration: none;
+}
+.nav-logo img {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+.nav-logo span {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--white);
+  letter-spacing: -0.01em;
+}
+.nav-logo span b { color: var(--teal); font-weight: 800; }
+.nav-links {
+  display: flex; gap: 2.5rem; list-style: none;
+}
+.nav-links a {
+  color: var(--muted); text-decoration: none;
+  font-size: 0.9rem; font-weight: 500;
+  transition: color 0.2s;
+  letter-spacing: 0.02em;
+}
+.nav-links a:hover { color: var(--white); }
+.nav-cta {
+  background: var(--teal);
+  color: #0d0b14;
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+  letter-spacing: 0.02em;
+}
+.nav-cta:hover { background: var(--teal2); transform: translateY(-1px); }
+
+/* ── NOISE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 1; opacity: 0.35;
+}
+
+/* ── SECTIONS ── */
+section {
+  position: relative; z-index: 2;
+}
+
+/* ── HERO ── */
+#hero {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 8rem 2rem 6rem;
+  overflow: hidden;
+}
+.hero-glow {
+  position: absolute;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(124,58,237,0.3) 0%, transparent 70%);
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+  animation: pulse 6s ease-in-out infinite;
+}
+.hero-glow2 {
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(15,217,192,0.15) 0%, transparent 70%);
+  top: 40%; left: 55%;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+  animation: pulse 8s ease-in-out infinite reverse;
+}
+@keyframes pulse {
+  0%,100% { transform: translate(-50%,-50%) scale(1); opacity:1; }
+  50% { transform: translate(-50%,-50%) scale(1.15); opacity:0.7; }
+}
+.hero-logo {
+  width: 120px; height: 120px;
+  border-radius: 24px;
+  object-fit: cover;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 60px rgba(124,58,237,0.5), 0 0 120px rgba(15,217,192,0.15);
+  animation: float 5s ease-in-out infinite;
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(124,58,237,0.15);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 100px;
+  padding: 0.35rem 1rem;
+  font-size: 0.8rem;
+  color: var(--teal);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.hero-eyebrow span { width:6px;height:6px;background:var(--teal);border-radius:50%;animation:blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+}
+h1 .accent { color: var(--teal); }
+h1 .dim { color: var(--purple2); }
+.hero-sub {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: var(--muted);
+  max-width: 540px;
+  margin: 0 auto 2.5rem;
+  font-weight: 300;
+  line-height: 1.7;
+}
+.hero-btns {
+  display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+}
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: var(--teal);
+  color: #0d0b14;
+  padding: 0.9rem 2rem;
+  border-radius: 10px;
+  font-weight: 700; font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.2s;
+  box-shadow: 0 0 30px rgba(15,217,192,0.3);
+}
+.btn-primary:hover { background: #0fffd9; transform: translateY(-2px); box-shadow: 0 0 50px rgba(15,217,192,0.5); }
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: transparent;
+  color: var(--white);
+  padding: 0.9rem 2rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-weight: 600; font-size: 1rem;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-secondary:hover { border-color: var(--purple2); background: rgba(124,58,237,0.08); transform: translateY(-2px); }
+
+.hero-ticker {
+  margin-top: 4rem;
+  display: flex; justify-content: center; align-items: center; gap: 2rem;
+  flex-wrap: wrap;
+}
+.ticker-item {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0.25rem;
+}
+.ticker-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem; font-weight: 800;
+  color: var(--teal);
+}
+.ticker-label {
+  font-size: 0.75rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.ticker-sep { width:1px; height:40px; background:var(--border); }
+
+/* scrolling line */
+.scroll-line {
+  position: absolute; bottom: 2.5rem; left:50%; transform:translateX(-50%);
+  display: flex; flex-direction:column; align-items:center; gap:0.5rem;
+  color:var(--muted); font-size:0.75rem; letter-spacing:0.1em; text-transform:uppercase;
+  animation: fadeup 2s ease infinite;
+}
+.scroll-line::after {
+  content:''; width:1px; height:40px;
+  background: linear-gradient(to bottom, var(--teal), transparent);
+}
+@keyframes fadeup { 0%,100%{opacity:0.4;transform:translateX(-50%) translateY(0)} 50%{opacity:1;transform:translateX(-50%) translateY(-6px)} }
+
+/* ── HOW IT WORKS ── */
+#how {
+  padding: 8rem 2rem;
+  background: var(--bg2);
+}
+.section-label {
+  text-align:center;
+  font-size:0.8rem; font-weight:600; letter-spacing:0.15em;
+  text-transform:uppercase; color:var(--teal);
+  margin-bottom:1rem;
+}
+h2 {
+  font-family:'Outfit',sans-serif;
+  font-size:clamp(2rem,4vw,3rem);
+  font-weight:800; letter-spacing:-0.02em;
+  text-align:center; margin-bottom:1rem;
+}
+.section-sub {
+  text-align:center; color:var(--muted);
+  max-width:500px; margin:0 auto 4rem;
+  font-size:1rem; line-height:1.7;
+}
+.steps {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:1.5rem; max-width:1000px; margin:0 auto;
+  position:relative;
+}
+.steps::before {
+  content:'';
+  position:absolute;
+  top:3rem; left:calc(16.67% + 1.5rem);
+  right:calc(16.67% + 1.5rem);
+  height:1px;
+  background:linear-gradient(to right, var(--teal), var(--purple), var(--teal));
+  opacity:0.3;
+}
+.step {
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:2rem;
+  position:relative;
+  transition:transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.step:hover {
+  transform:translateY(-6px);
+  border-color:rgba(124,58,237,0.5);
+  box-shadow:0 20px 60px rgba(124,58,237,0.1);
+}
+.step-num {
+  width:48px;height:48px;
+  background:linear-gradient(135deg,var(--purple),var(--teal));
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Outfit',sans-serif;
+  font-weight:800;font-size:1.1rem;color:#fff;
+  margin-bottom:1.25rem;
+}
+.step h3 {
+  font-family:'Outfit',sans-serif;
+  font-size:1.1rem;font-weight:700;
+  margin-bottom:0.5rem;
+}
+.step p { color:var(--muted);font-size:0.9rem;line-height:1.6; }
+
+/* ── FOR WHO ── */
+#forwho {
+  padding:8rem 2rem;
+  background:var(--bg);
+}
+.forwho-grid {
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:2rem;max-width:1000px;margin:4rem auto 0;
+}
+.forwho-card {
+  border-radius:20px;
+  padding:2.5rem;
+  position:relative;overflow:hidden;
+  transition:transform 0.3s;
+}
+.forwho-card:hover { transform:translateY(-4px); }
+.forwho-card.employer {
+  background:linear-gradient(135deg,rgba(124,58,237,0.15),rgba(124,58,237,0.05));
+  border:1px solid rgba(124,58,237,0.3);
+}
+.forwho-card.worker {
+  background:linear-gradient(135deg,rgba(15,217,192,0.1),rgba(15,217,192,0.03));
+  border:1px solid rgba(15,217,192,0.25);
+}
+.forwho-icon {
+  font-size:2.5rem;margin-bottom:1rem;display:block;
+}
+.forwho-card h3 {
+  font-family:'Outfit',sans-serif;
+  font-size:1.4rem;font-weight:800;margin-bottom:1rem;
+}
+.forwho-card.employer h3 { color:var(--purple2); }
+.forwho-card.worker h3 { color:var(--teal); }
+.forwho-list {
+  list-style:none;display:flex;flex-direction:column;gap:0.6rem;
+  margin-bottom:1.5rem;
+}
+.forwho-list li {
+  display:flex;align-items:flex-start;gap:0.6rem;
+  font-size:0.9rem;color:var(--muted);line-height:1.5;
+}
+.forwho-list li::before {
+  content:'→';flex-shrink:0;
+  margin-top:0.05rem;
+}
+.forwho-card.employer .forwho-list li::before { color:var(--purple2); }
+.forwho-card.worker .forwho-list li::before { color:var(--teal); }
+.forwho-btn {
+  display:inline-flex;align-items:center;gap:0.4rem;
+  padding:0.65rem 1.4rem;border-radius:8px;
+  font-weight:700;font-size:0.9rem;
+  text-decoration:none;transition:all 0.2s;
+  letter-spacing:0.02em;
+}
+.forwho-card.employer .forwho-btn {
+  background:rgba(124,58,237,0.2);color:var(--purple2);
+  border:1px solid rgba(124,58,237,0.4);
+}
+.forwho-card.employer .forwho-btn:hover { background:rgba(124,58,237,0.35); }
+.forwho-card.worker .forwho-btn {
+  background:rgba(15,217,192,0.15);color:var(--teal);
+  border:1px solid rgba(15,217,192,0.3);
+}
+.forwho-card.worker .forwho-btn:hover { background:rgba(15,217,192,0.25); }
+
+/* ── FEATURES ── */
+#features {
+  padding:8rem 2rem;
+  background:var(--bg2);
+}
+.features-grid {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:1.5rem;max-width:1100px;margin:4rem auto 0;
+}
+.feat {
+  padding:1.75rem;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:14px;
+  transition:all 0.3s;
+}
+.feat:hover {
+  border-color:rgba(15,217,192,0.3);
+  transform:translateY(-4px);
+  box-shadow:0 20px 40px rgba(0,0,0,0.3);
+}
+.feat-icon {
+  font-size:1.75rem;margin-bottom:1rem;display:block;
+}
+.feat h4 {
+  font-family:'Outfit',sans-serif;
+  font-size:1rem;font-weight:700;margin-bottom:0.4rem;
+}
+.feat p { font-size:0.875rem;color:var(--muted);line-height:1.6; }
+
+/* ── ROADMAP ── */
+#roadmap {
+  padding:8rem 2rem;
+  background:var(--bg);
+}
+.roadmap-track {
+  max-width:800px;margin:4rem auto 0;
+  position:relative;
+}
+.roadmap-track::before {
+  content:'';
+  position:absolute;left:1.5rem;top:0;bottom:0;
+  width:2px;
+  background:linear-gradient(to bottom,var(--purple),var(--teal),var(--purple));
+  opacity:0.3;
+}
+.roadmap-item {
+  display:flex;gap:2rem;
+  margin-bottom:3rem;
+  position:relative;
+}
+.roadmap-dot {
+  width:3rem;height:3rem;flex-shrink:0;
+  background:var(--bg3);
+  border:2px solid var(--border);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;
+  position:relative;z-index:1;
+  transition:all 0.3s;
+}
+.roadmap-item:hover .roadmap-dot {
+  border-color:var(--teal);
+  box-shadow:0 0 20px rgba(15,217,192,0.3);
+}
+.roadmap-content {
+  flex:1;padding-top:0.4rem;
+}
+.roadmap-quarter {
+  font-size:0.75rem;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--teal);margin-bottom:0.4rem;
+}
+.roadmap-content h4 {
+  font-family:'Outfit',sans-serif;
+  font-size:1.1rem;font-weight:800;margin-bottom:0.5rem;
+}
+.roadmap-content p { color:var(--muted);font-size:0.9rem;line-height:1.6; }
+.roadmap-tag {
+  display:inline-block;
+  background:rgba(124,58,237,0.15);
+  border:1px solid rgba(124,58,237,0.3);
+  color:var(--purple2);
+  font-size:0.7rem;font-weight:700;
+  letter-spacing:0.08em;text-transform:uppercase;
+  padding:0.2rem 0.6rem;border-radius:100px;
+  margin-top:0.75rem;
+}
+.roadmap-tag.live {
+  background:rgba(15,217,192,0.12);
+  border-color:rgba(15,217,192,0.3);
+  color:var(--teal);
+}
+
+/* ── GITHUB ── */
+#github {
+  padding:6rem 2rem;
+  background:var(--bg2);
+}
+.github-card {
+  max-width:700px;margin:0 auto;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:3rem;
+  text-align:center;
+  position:relative;overflow:hidden;
+}
+.github-card::before {
+  content:'';
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at top,rgba(124,58,237,0.08),transparent 60%);
+  pointer-events:none;
+}
+.github-icon { font-size:3rem;margin-bottom:1.5rem;display:block; }
+.github-card h3 {
+  font-family:'Outfit',sans-serif;
+  font-size:1.75rem;font-weight:800;margin-bottom:0.75rem;
+}
+.github-card p { color:var(--muted);margin-bottom:2rem;line-height:1.7; }
+.github-stats {
+  display:flex;justify-content:center;gap:3rem;margin-bottom:2rem;
+}
+.github-stat { text-align:center; }
+.github-stat-val {
+  font-family:'Outfit',sans-serif;
+  font-size:1.4rem;font-weight:800;color:var(--white);
+}
+.github-stat-label { font-size:0.75rem;color:var(--muted);letter-spacing:0.05em; }
+
+/* ── CTA ── */
+#cta {
+  padding:8rem 2rem;
+  background:var(--bg);
+  text-align:center;
+  position:relative;overflow:hidden;
+}
+#cta::before {
+  content:'';
+  position:absolute;
+  width:600px;height:600px;
+  background:radial-gradient(circle,rgba(124,58,237,0.2),transparent 70%);
+  top:50%;left:50%;transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.cta-logo {
+  width:80px;height:80px;border-radius:18px;object-fit:cover;
+  margin:0 auto 2rem;display:block;
+  box-shadow:0 0 40px rgba(124,58,237,0.4);
+}
+#cta h2 { margin-bottom:1rem; }
+#cta p { color:var(--muted);max-width:440px;margin:0 auto 2.5rem;line-height:1.7; }
+.cta-btns { display:flex;gap:1rem;justify-content:center;flex-wrap:wrap; }
+
+/* ── FOOTER ── */
+footer {
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  padding:3rem 4rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1.5rem;
+}
+.footer-logo {
+  display:flex;align-items:center;gap:0.6rem;
+  text-decoration:none;
+}
+.footer-logo img { width:28px;height:28px;border-radius:7px;object-fit:cover; }
+.footer-logo span {
+  font-family:'Outfit',sans-serif;font-weight:700;font-size:1rem;color:var(--white);
+}
+.footer-logo span b { color:var(--teal); }
+.footer-links {
+  display:flex;gap:2rem;list-style:none;flex-wrap:wrap;
+}
+.footer-links a {
+  color:var(--muted);text-decoration:none;font-size:0.875rem;
+  transition:color 0.2s;
+}
+.footer-links a:hover { color:var(--white); }
+.footer-copy {
+  color:var(--muted);font-size:0.8rem;
+}
+
+/* ── REVEAL ANIMATIONS ── */
+.reveal {
+  opacity:0;transform:translateY(30px);
+  transition:opacity 0.7s cubic-bezier(.23,1,.32,1), transform 0.7s cubic-bezier(.23,1,.32,1);
+}
+.reveal.visible {
+  opacity:1;transform:translateY(0);
+}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  nav { padding:1rem 1.5rem; }
+  .nav-links { display:none; }
+  .forwho-grid { grid-template-columns:1fr; }
+  .steps::before { display:none; }
+  footer { flex-direction:column;text-align:center; }
+  .github-stats { gap:1.5rem; }
+}
+
+/* ── LIVE COUNTER ── */
+.live-counter {
+  font-family:'Outfit',sans-serif;
+  font-size:clamp(1.2rem,3vw,1.8rem);
+  font-weight:800;color:var(--teal);
+}
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="#hero" class="nav-logo">
+    <span>drip<b>Wage</b></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="https://github.com/aegonmyy/dripWage" target="_blank">GitHub</a></li>
+  </ul>
+  
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+  <div>
+    
+    <div class="hero-eyebrow reveal">
+      <span></span> Live on VOI Mainnet
+    </div>
+    <h1 class="reveal">
+      Payroll at the<br>
+      <span class="accent">speed of now</span>
+    </h1>
+    <p class="hero-sub reveal">
+      Stream wages continuously to your workers — second by second,
+      directly on the VOI blockchain. No middlemen. No waiting. Just money moving.
+    </p>
+    <div class="hero-btns reveal">
+      <a href="https://t.me/dripwagebot" class="btn-primary" target="_blank">
+        ✈ Open dripWage Bot
+      </a>
+      <a href="#how" class="btn-secondary">
+        See how it works
+      </a>
+    </div>
+
+    <div class="hero-ticker reveal">
+      <div class="ticker-item">
+        <span class="ticker-val live-counter" id="c-speed">~3s</span>
+        <span class="ticker-label">Settlement time</span>
+      </div>
+      <div class="ticker-sep"></div>
+      <div class="ticker-item">
+        <span class="ticker-val">&lt;$0.01</span>
+        <span class="ticker-label">Per transaction</span>
+      </div>
+      <div class="ticker-sep"></div>
+      <div class="ticker-item">
+        <span class="ticker-val live-counter" id="c-streams">0</span>
+        <span class="ticker-label">Seconds running</span>
+      </div>
+      <div class="ticker-sep"></div>
+      <div class="ticker-item">
+        <span class="ticker-val">100%</span>
+        <span class="ticker-label">Non-custodial</span>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-line">scroll</div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-label reveal">How it works</div>
+  <h2 class="reveal">Three steps to continuous payroll</h2>
+  <p class="section-sub reveal">Deployed on VOI — a fast, community-owned blockchain. Set it up once, it runs forever.</p>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">1</div>
+      <h3>Deploy your contract</h3>
+      <p>Open the Telegram bot, choose Employer, and deploy your StreamWagePayroll contract. Fund your treasury with VOI. Done in under two minutes.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">2</div>
+      <h3>Add your workers</h3>
+      <p>Set each worker's pay rate and interval — hourly, monthly, or any custom interval in seconds. Share your App ID so they can connect.</p>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">3</div>
+      <h3>Workers claim anytime</h3>
+      <p>Wages accrue automatically from the moment a worker is added. They claim directly to their wallet whenever they want — no approval needed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOR WHO -->
+<section id="forwho">
+  <div class="section-label reveal">Built for both sides</div>
+  <h2 class="reveal">Employers and workers</h2>
+  <p class="section-sub reveal">Two roles, one bot. Every interaction is designed to be fast and clear.</p>
+  <div class="forwho-grid">
+    <div class="forwho-card employer reveal">
+      <span class="forwho-icon">🏢</span>
+      <h3>For Employers</h3>
+      <ul class="forwho-list">
+        <li>Deploy and fund your payroll contract</li>
+        <li>Add workers with custom pay rates</li>
+        <li>Pause or resume any worker instantly</li>
+        <li>Monitor burn rate and treasury runway</li>
+        <li>Top up and manage from Telegram</li>
+      </ul>
+      <a href="https://t.me/dripwagebot" class="forwho-btn" target="_blank">Get started →</a>
+    </div>
+    <div class="forwho-card worker reveal">
+      <span class="forwho-icon">👷</span>
+      <h3>For Workers</h3>
+      <ul class="forwho-list">
+        <li>Connect with your employer's App ID</li>
+        <li>Watch wages accrue in real time</li>
+        <li>Claim directly to your VOI wallet</li>
+        <li>No middleman, no waiting period</li>
+        <li>View treasury runway and status</li>
+      </ul>
+      <a href="https://t.me/dripwagebot" class="forwho-btn" target="_blank">Claim your wages →</a>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label reveal">Why dripWage</div>
+  <h2 class="reveal">Built different</h2>
+  <p class="section-sub reveal">Not just faster payroll. A fundamentally different model for how work gets paid.</p>
+  <div class="features-grid">
+    <div class="feat reveal">
+      <span class="feat-icon">⚡</span>
+      <h4>Real-time streaming</h4>
+      <p>Wages accrue every second, not every month. Workers earn continuously from the moment they start.</p>
+    </div>
+    <div class="feat reveal">
+      <span class="feat-icon">🔐</span>
+      <h4>Non-custodial</h4>
+      <p>Your keys, your funds. Smart contracts hold the treasury — nobody else can touch it.</p>
+    </div>
+    <div class="feat reveal">
+      <span class="feat-icon">🌐</span>
+      <h4>On VOI blockchain</h4>
+      <p>Sub-3-second finality. Fees under a cent. Community-owned infrastructure that doesn't extract from you.</p>
+    </div>
+    <div class="feat reveal">
+      <span class="feat-icon">📱</span>
+      <h4>Telegram native</h4>
+      <p>No app to install. No browser wallet to configure. Everything runs inside Telegram.</p>
+    </div>
+    <div class="feat reveal">
+      <span class="feat-icon">🎛</span>
+      <h4>Flexible intervals</h4>
+      <p>Pay hourly, monthly, or every N seconds. Any payment schedule you can imagine.</p>
+    </div>
+    <div class="feat reveal">
+      <span class="feat-icon">🛡</span>
+      <h4>Encrypted at rest</h4>
+      <p>Wallet mnemonics are AES-encrypted in storage. Your keys are never exposed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <div class="section-label reveal">What's coming</div>
+  <h2 class="reveal">Roadmap</h2>
+  <p class="section-sub reveal">We're just getting started. Here's where dripWage is going.</p>
+  <div class="roadmap-track">
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">🤖</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Now — Live</div>
+        <h4>Telegram Bot</h4>
+        <p>Full employer and worker flows. Deploy contracts, add workers, stream wages, claim pay. All from Telegram.</p>
+        <span class="roadmap-tag live">Live</span>
+      </div>
+    </div>
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">⚙️</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Q3 2026 — Foundation</div>
+        <h4>Platform Upgrades</h4>
+        <p>Batch pause/resume, worker notifications, low-treasury alerts, full transaction history per worker.</p>
+        <span class="roadmap-tag">Planned</span>
+      </div>
+    </div>
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">🌐</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Q4 2026 — Web App</div>
+        <h4>Web Dashboard</h4>
+        <p>Full browser-based dashboard with real-time wage charts, WalletConnect support, and mobile-responsive design.</p>
+        <span class="roadmap-tag">Planned</span>
+      </div>
+    </div>
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">🔗</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Q1 2027 — Integrations</div>
+        <h4>Discord & Slack</h4>
+        <p>Claim wages from your Discord server. Payroll notifications in Slack. CSV import for bulk worker onboarding.</p>
+        <span class="roadmap-tag">Planned</span>
+      </div>
+    </div>
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">📊</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Q2 2027 — Scale</div>
+        <h4>Multi-contract & Analytics</h4>
+        <p>Manage multiple contracts, team roles, scheduled auto top-ups, and full payroll analytics dashboards.</p>
+        <span class="roadmap-tag">Planned</span>
+      </div>
+    </div>
+    <div class="roadmap-item reveal">
+      <div class="roadmap-dot">🚀</div>
+      <div class="roadmap-content">
+        <div class="roadmap-quarter">Q3 2027 — Ecosystem</div>
+        <h4>API & SDK</h4>
+        <p>Public dripWage API, white-label deployments, fiat on-ramp integrations, and a developer SDK for VOI builders.</p>
+        <span class="roadmap-tag">Planned</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GITHUB -->
+<section id="github">
+  <div class="github-card reveal">
+    <span class="github-icon">🐙</span>
+    <h3>Open source on GitHub</h3>
+    <p>dripWage is built in the open. Inspect the code, fork it, contribute, or build on top of it.</p>
+    <div class="github-stats">
+      <div class="github-stat">
+        <div class="github-stat-val">VOI</div>
+        <div class="github-stat-label">Blockchain</div>
+      </div>
+      <div class="github-stat">
+        <div class="github-stat-val">Python</div>
+        <div class="github-stat-label">Language</div>
+      </div>
+      <div class="github-stat">
+        <div class="github-stat-val">MIT</div>
+        <div class="github-stat-label">License</div>
+      </div>
+    </div>
+    <a href="https://github.com/aegonmyy/dripWage" class="btn-primary" target="_blank">
+      View on GitHub →
+    </a>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  
+  <h2 class="reveal">Start streaming wages today</h2>
+  <p class="reveal">Open the bot, set up your wallet, and have payroll running in minutes. No account. No KYC. Just VOI.</p>
+  <div class="cta-btns reveal">
+    <a href="https://t.me/dripwagebot" class="btn-primary" target="_blank">✈ Open in Telegram</a>
+    <a href="https://github.com/aegonmyy/dripWage" class="btn-secondary" target="_blank">GitHub →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <a href="#hero" class="footer-logo">
+    <span>drip<b>Wage</b></span>
+  </a>
+  <ul class="footer-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="https://github.com/aegonmyy/dripWage" target="_blank">GitHub</a></li>
+    <li><a href="https://t.me/dripwagebot" target="_blank">Telegram Bot</a></li>
+    <li><a href="https://voi.network" target="_blank">VOI Network</a></li>
+    <li><a href="https://t.me/ameenme" target="_blank">Support</a></li>
+  </ul>
+  <span class="footer-copy">Built on VOI. © 2026 dripWage.</span>
+</footer>
+
+<script>
+// Custom cursor
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX; my=e.clientY;
+  cursor.style.transform=`translate(${mx-6}px,${my-6}px)`;
+});
+function animRing(){
+  rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12;
+  ring.style.transform=`translate(${rx-18}px,${ry-18}px)`;
+  requestAnimationFrame(animRing);
+}
+animRing();
+document.querySelectorAll('a,button').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{
+    ring.style.width='54px';ring.style.height='54px';
+    ring.style.borderColor='rgba(15,217,192,0.7)';
+  });
+  el.addEventListener('mouseleave',()=>{
+    ring.style.width='36px';ring.style.height='36px';
+    ring.style.borderColor='rgba(15,217,192,0.4)';
+  });
+});
+
+// Scroll reveal
+const reveals = document.querySelectorAll('.reveal');
+const obs = new IntersectionObserver((entries)=>{
+  entries.forEach((e,i)=>{
+    if(e.isIntersecting){
+      setTimeout(()=>e.target.classList.add('visible'),i*60);
+    }
+  });
+},{threshold:0.1});
+reveals.forEach(r=>obs.observe(r));
+
+// Running seconds counter
+let seconds = 0;
+const cStreams = document.getElementById('c-streams');
+setInterval(()=>{ seconds++; cStreams.textContent=seconds.toLocaleString(); },1000);
+
+// Stagger reveals within groups
+document.querySelectorAll('.steps, .features-grid, .forwho-grid').forEach(group=>{
+  group.querySelectorAll('.reveal').forEach((el,i)=>{
+    el.style.transitionDelay=`${i*80}ms`;
+  });
+});
+
+// Nav shrink on scroll
+window.addEventListener('scroll',()=>{
+  document.querySelector('nav').style.padding=
+    window.scrollY>50?'0.8rem 4rem':'1.2rem 4rem';
+});
+</script>
+</body>
+</html>
